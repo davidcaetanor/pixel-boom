@@ -1,4 +1,4 @@
-# Pixel-Boomb
+# Pixel-Boom
 
 Jogo multiplayer de arena em grade, em pixel art, para navegador.
 
