@@ -6,6 +6,8 @@
 import {
   ARENA_COLS,
   ARENA_ROWS,
+  isBotDifficulty,
+  type BotDifficulty,
   type Facing,
   type MatchPhase,
   type MatchState,
@@ -34,6 +36,7 @@ interface RemoteMember {
   character: number;
   order: number;
   nickname: string;
+  bot: boolean;
 }
 
 /** Formato do estado da sala, independente das classes de schema do servidor. */
@@ -44,6 +47,7 @@ export interface RemoteState {
   winnerId: string;
   connected: number;
   hostId: string;
+  botDifficulty: string;
   members: { forEach(cb: (m: RemoteMember) => void): void };
   round: number;
   seriesFinished: boolean;
@@ -66,11 +70,13 @@ export interface Member {
   readonly character: number;
   readonly order: number;
   readonly nickname: string | null;
+  readonly bot: boolean;
 }
 
 /** Quem esta na sala, valido na espera e durante a partida. */
 export interface Lobby {
   readonly hostId: string;
+  readonly botDifficulty: BotDifficulty | null;
   /** Em ordem de entrada. */
   readonly members: readonly Member[];
 }
@@ -94,10 +100,20 @@ export type Snapshot = WaitingSnapshot | MatchSnapshot;
 function readLobby(remote: RemoteState): Lobby {
   const members: Member[] = [];
   remote.members.forEach((m) =>
-    members.push({ id: m.id, character: m.character, order: m.order, nickname: m.nickname === "" ? null : m.nickname }),
+    members.push({
+      id: m.id,
+      character: m.character,
+      order: m.order,
+      nickname: m.nickname === "" ? null : m.nickname,
+      bot: m.bot,
+    }),
   );
   members.sort((a, b) => a.order - b.order);
-  return { hostId: remote.hostId, members };
+  return {
+    hostId: remote.hostId,
+    botDifficulty: isBotDifficulty(remote.botDifficulty) ? remote.botDifficulty : null,
+    members,
+  };
 }
 
 export function nicknamesOf(lobby: Lobby): ReadonlyMap<string, string> {

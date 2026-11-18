@@ -1,8 +1,9 @@
 /** Sala de espera sobreposta ao canvas. Nao conhece rede nem Phaser. */
-import { BALANCE, CHARACTER_COUNT, displayName, shortName } from "@pixelboom/shared";
+import { BALANCE, CHARACTER_COUNT, displayName, shortName, type BotDifficulty } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
 import { moveFocus } from "./keyboard-nav.js";
+import { DIFFICULTY_LABEL } from "./labels.js";
 
 export interface RoomPanelActions {
   onPick(character: number): void;
@@ -14,8 +15,14 @@ export interface RoomPanelView {
   readonly code: string;
   readonly localId: string;
   readonly hostId: string;
+  readonly botDifficulty: BotDifficulty | null;
   /** Em ordem de entrada; a posicao define a cor do slot. */
-  readonly members: readonly { readonly id: string; readonly character: number; readonly nickname: string | null }[];
+  readonly members: readonly {
+    readonly id: string;
+    readonly character: number;
+    readonly nickname: string | null;
+    readonly bot: boolean;
+  }[];
 }
 
 /** Miniatura em escala de arte; o zoom do painel amplia junto com o resto. */
@@ -32,6 +39,7 @@ export class RoomPanel {
   private readonly status: HTMLElement;
   private readonly start: HTMLButtonElement;
   private readonly copy: HTMLButtonElement;
+  private readonly title: HTMLElement;
   private readonly cards: HTMLButtonElement[] = [];
   private code = "";
   private focused = false;
@@ -40,8 +48,8 @@ export class RoomPanel {
     this.root = document.createElement("div");
     this.root.className = "lobby room";
 
-    const title = document.createElement("h1");
-    title.textContent = "Sala";
+    this.title = document.createElement("h1");
+    this.title.textContent = "Sala";
 
     this.copy = document.createElement("button");
     this.copy.type = "button";
@@ -90,7 +98,7 @@ export class RoomPanel {
 
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(title, this.copy, grid, this.status, this.start, leave);
+    box.append(this.title, this.copy, grid, this.status, this.start, leave);
     this.root.append(box);
     this.root.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
@@ -109,12 +117,17 @@ export class RoomPanel {
       this.copy.textContent = `Codigo ${view.code}  |  copiar codigo`;
     }
 
-    const owners = new Map(view.members.map((m, slot) => [m.character, { id: m.id, slot, nickname: m.nickname }]));
+    const owners = new Map(
+      view.members.map((m, slot) => [m.character, { id: m.id, slot, nickname: m.nickname, bot: m.bot }]),
+    );
+    this.title.textContent = view.botDifficulty === null ? "Sala" : `Contra bot: ${DIFFICULTY_LABEL[view.botDifficulty]}`;
+    this.copy.hidden = view.botDifficulty !== null;
     this.cards.forEach((card, character) => {
       const owner = owners.get(character);
       const mine = owner?.id === view.localId;
       card.disabled = owner !== undefined && !mine;
       card.classList.toggle("is-mine", mine);
+      card.classList.toggle("is-bot", owner?.bot === true);
       card.style.outline =
         owner === undefined ? "" : `${mine ? OWNER_OUTLINE_MINE : OWNER_OUTLINE}px solid ${corCss(corDoSlot(owner.slot))}`;
       const crown = card.querySelector<HTMLElement>(".roster-host");
@@ -140,7 +153,9 @@ export class RoomPanel {
     this.start.hidden = !isHost;
     this.start.disabled = count < needed;
     const players = `${count}/${BALANCE.net.maxClientsPerRoom} jogadores`;
-    if (isHost) {
+    if (view.botDifficulty !== null) {
+      this.status.textContent = "Escolha seu personagem e inicie";
+    } else if (isHost) {
       this.status.textContent = count < needed ? `${players}, minimo ${needed} para iniciar` : players;
     } else {
       this.status.textContent = `${players}, aguardando o anfitriao iniciar`;
