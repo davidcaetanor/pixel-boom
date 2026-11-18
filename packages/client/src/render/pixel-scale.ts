@@ -14,9 +14,14 @@
 import { LOGICAL_HEIGHT, LOGICAL_WIDTH, RENDER_ZOOM } from "@pixelboom/shared";
 import { isTouchDevice } from "../app/touch-screen.js";
 
-/** Maior painel HTML (a sala com os 8 cards), em pixels de arte, empilhado e deitado. */
+/**
+ * Caixa que todo painel HTML precisa caber, em pixels de arte, com a sala
+ * empilhada e deitada. A largura vem da sala; a altura e a da tela mais alta
+ * do formato (a sala empilhada, ou o menu inicial quando a sala esta deitada),
+ * com folga para a barra do navegador nao cortar a moldura.
+ */
 const UI_EMPILHADA = { largura: 348, altura: 392 };
-const UI_DEITADA = { largura: 530, altura: 230 };
+const UI_DEITADA = { largura: 600, altura: 284 };
 
 /** Lado do direcional em pixels de arte e o tamanho que ele deve ter no dedo, em px CSS. */
 const DIRECIONAL_ARTE = 98;
