@@ -12,6 +12,19 @@ interface LockableOrientation {
   lock?: (orientation: "landscape") => Promise<void>;
 }
 
+/**
+ * iPhone aberto no Safari: a pagina nao tem tela cheia, so o jogo aberto pela
+ * Tela de Inicio (o manifest abre em tela cheia e paisagem). O iPad tem tela
+ * cheia de pagina e fica fora.
+ */
+export function needsHomeScreen(): boolean {
+  const iphone = /iPhone|iPod/.test(navigator.userAgent);
+  const instalado =
+    window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return iphone && !instalado && !document.fullscreenEnabled;
+}
+
 export function isTouchDevice(): boolean {
   return window.matchMedia(TOQUE).matches;
 }

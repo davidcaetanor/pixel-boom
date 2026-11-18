@@ -408,6 +408,35 @@
         width: 16px;
         height: 16px;
       }
+      .lobby-passos img {
+        width: auto;
+        height: auto;
+      }
+      /*
+       * Canto da tela, onde fica a pausa na partida; moldura da engrenagem.
+       * So existe no iPhone fora da Tela de Inicio.
+       */
+      .lobby button.lobby-tela-cheia {
+        box-sizing: content-box;
+        position: fixed;
+        top: calc(env(safe-area-inset-top) + 8px);
+        right: calc(env(safe-area-inset-right) + 8px);
+        width: 28px;
+        height: 28px;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        border-image: none;
+        background: url(/ui-tela-cheia.png) no-repeat;
+      }
+      .lobby button.lobby-tela-cheia:focus-visible,
+      .lobby button.lobby-tela-cheia:active {
+        border-image: none;
+        background-image: url(/ui-tela-cheia-foco.png);
+      }
+      .is-touch .lobby .lobby-tela-cheia::after {
+        inset: -8px;
+      }
       /*
        * Controles de toque. As pecas ficam em escala inteira (--touch-zoom) e,
        * quando sobra espaco ao lado da arena, centradas nessa faixa.
@@ -521,7 +550,7 @@
         filter: brightness(0.8);
       }
       /* Alvo de toque maior que o desenho, sem mudar o visual dos paineis. */
-      .is-touch .lobby button:not(.room-gear, .roster-kick, .roster-bot) {
+      .is-touch .lobby button:not(.room-gear, .roster-kick, .roster-bot, .lobby-tela-cheia) {
         position: relative;
       }
       .is-touch .lobby button::after {
