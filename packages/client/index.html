@@ -156,14 +156,22 @@
         position: relative;
         display: flex;
       }
+      /* 14x14 com o canto no vertice do cartao, como a coroa. */
       .lobby .roster-kick {
         position: absolute;
-        top: -6px;
-        right: -6px;
+        top: -5px;
+        right: -5px;
+        width: 14px;
+        height: 14px;
         padding: 0;
-        border-width: 4px;
-        border-image: url(/ui-botao.png) 10 12 fill / 4px stretch;
-        line-height: 8px;
+        border: none;
+        border-image: none;
+        background: url(/ui-remover.png) no-repeat;
+      }
+      .lobby .roster-kick:hover,
+      .lobby .roster-kick:focus-visible {
+        border-image: none;
+        background-image: url(/ui-remover-hover.png);
       }
       .room-capacity {
         display: flex;

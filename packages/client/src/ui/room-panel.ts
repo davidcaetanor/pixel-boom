@@ -97,7 +97,6 @@ export class RoomPanel {
       const kick = document.createElement("button");
       kick.type = "button";
       kick.className = "roster-kick";
-      kick.textContent = "x";
       kick.tabIndex = -1;
       kick.hidden = true;
       kick.addEventListener("click", () => {
@@ -197,6 +196,7 @@ export class RoomPanel {
       if (kick !== undefined) {
         kick.hidden = !canKick(owner?.id, owner?.bot);
         kick.title = owner === undefined ? "" : `Remover ${displayName(owner.nickname, owner.slot)} da sala`;
+        kick.setAttribute("aria-label", kick.title);
       }
       const crown = card.querySelector<HTMLElement>(".roster-host");
       if (crown !== null) {
