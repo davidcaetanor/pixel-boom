@@ -83,24 +83,28 @@ export const BALANCE = {
     travelCost: 1,
     /** Abaixo desta distancia, chegar mais perto nao vale mais nada. */
     enemyComfortCells: 2,
-    /** Com a arena fechando, chances e atracao multiplicadas; chance limitada a 1 por segundo. */
-    closingAggression: 3,
     difficulty: {
       normal: {
         /** Bomba inimiga mais nova que isto ainda nao foi notada. */
-        reactionTime: 0.6,
+        reactionTime: 0.9,
         /** Chance por segundo de soltar bomba quando ela prende o adversario. */
-        attackChance: 0.12,
+        attackChance: 0.05,
         /** Chance por segundo de soltar bomba com o adversario so na linha da explosao. */
-        pokeChance: 0.04,
+        pokeChance: 0.02,
         /** Desconto por celula de distancia ate o adversario mais proximo. */
-        enemyPull: 0.2,
+        enemyPull: 0.15,
+        /** Com a arena fechando, chances e atracao multiplicadas por isto; chance limitada a 1 por segundo. */
+        pressure: 1.5,
+        /** Intervalo entre decisoes de alvo e de bomba; fugir de perigo continua imediato. */
+        thinkSeconds: 0.35,
       },
       hard: {
         reactionTime: 0.12,
         attackChance: 0.9,
         pokeChance: 0.8,
         enemyPull: 0.5,
+        pressure: 3,
+        thinkSeconds: 0,
       },
     },
   },
