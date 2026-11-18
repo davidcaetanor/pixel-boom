@@ -44,6 +44,8 @@ export const BALANCE = {
     crateDensityMin: 0.55,
     crateDensityMax: 0.65,
     powerUpChance: 0.3,
+    /** Peso de cada tipo no sorteio do item, na ordem de POWER_UP_KINDS. */
+    powerUpWeights: [40, 35, 25],
   },
 
   /** Cadencia da simulacao de passo fixo. */

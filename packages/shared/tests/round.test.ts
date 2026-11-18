@@ -6,10 +6,10 @@ import { SUDDEN_DEATH_RINGS } from "../src/config/sudden-death-order.js";
 import { CellKind } from "../src/domain/cell.js";
 import { cellAt, setCell } from "../src/domain/grid.js";
 import { MatchPhase, type MatchState } from "../src/domain/match-state.js";
-import { PowerUpKind } from "../src/domain/powerup.js";
+import { POWER_UP_KINDS, PowerUpKind } from "../src/domain/powerup.js";
 import type { InputsByPlayer } from "../src/commands/input-command.js";
 import { createStaticGrid } from "../src/rules/map-generation.js";
-import { applyPowerUp, rollDrops } from "../src/rules/pickup.js";
+import { applyPowerUp, rollDrops, weightedKind } from "../src/rules/pickup.js";
 import { ringsDue } from "../src/rules/sudden-death.js";
 import { checkVictory } from "../src/rules/victory.js";
 import { seedRng } from "../src/simulation/rng.js";
@@ -63,6 +63,16 @@ describe("pickup", () => {
     expect(p.maxBombs).toBe(BALANCE.player.bombsMax);
     expect(p.range).toBe(BALANCE.player.rangeMax);
     expect(p.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+  });
+
+  it("sorteia o tipo pela fatia de cada peso", () => {
+    expect(weightedKind(0)).toBe(PowerUpKind.Bomb);
+    expect(weightedKind(0.39)).toBe(PowerUpKind.Bomb);
+    expect(weightedKind(0.4)).toBe(PowerUpKind.Range);
+    expect(weightedKind(0.74)).toBe(PowerUpKind.Range);
+    expect(weightedKind(0.75)).toBe(PowerUpKind.Speed);
+    expect(weightedKind(0.999)).toBe(PowerUpKind.Speed);
+    expect(BALANCE.mapGeneration.powerUpWeights).toHaveLength(POWER_UP_KINDS.length);
   });
 
   it("impulso de velocidade nao acumula e outro reinicia o tempo", () => {
