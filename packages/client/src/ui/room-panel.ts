@@ -1,10 +1,10 @@
 /**
- * Sala de espera sobreposta ao canvas: codigo e convite, escolha de personagem,
+ * Sala de espera sobreposta ao canvas: codigo da sala para copiar, escolha de personagem,
  * o botao de iniciar, ativo so para o anfitriao, e a volta ao menu. Navega por
  * teclado como o menu: setas movem o foco e Esc volta ao menu. Nao conhece rede
  * nem Phaser.
  */
-import { BALANCE, CHARACTER_COUNT, displayName } from "@pixelboom/shared";
+import { BALANCE, CHARACTER_COUNT, displayName, shortName } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
 import { moveFocus } from "./keyboard-nav.js";
@@ -38,7 +38,7 @@ export class RoomPanel {
   private readonly start: HTMLButtonElement;
   private readonly copy: HTMLButtonElement;
   private readonly cards: HTMLButtonElement[] = [];
-  private inviteUrl = "";
+  private code = "";
   private focused = false;
 
   constructor(actions: RoomPanelActions, host: HTMLElement = document.body) {
@@ -50,7 +50,7 @@ export class RoomPanel {
 
     this.copy = document.createElement("button");
     this.copy.type = "button";
-    this.copy.addEventListener("click", () => this.copyInvite());
+    this.copy.addEventListener("click", () => this.copyCode());
 
     const grid = document.createElement("div");
     grid.className = "roster";
@@ -109,9 +109,9 @@ export class RoomPanel {
   }
 
   render(view: RoomPanelView): void {
-    this.inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${view.code}`;
+    this.code = view.code;
     if (!this.copy.dataset["copied"]) {
-      this.copy.textContent = `Codigo ${view.code}  |  copiar convite`;
+      this.copy.textContent = `Codigo ${view.code}  |  copiar codigo`;
     }
 
     const owners = new Map(view.members.map((m, slot) => [m.character, { id: m.id, slot, nickname: m.nickname }]));
@@ -128,11 +128,9 @@ export class RoomPanel {
       }
       const label = card.querySelector(".roster-label");
       if (label !== null) {
-        if (owner === undefined) {
-          label.textContent = "livre";
-        } else {
-          label.textContent = mine && owner.nickname === null ? "voce" : displayName(owner.nickname, owner.slot);
-        }
+        const name = owner === undefined ? "livre" : displayName(owner.nickname, owner.slot);
+        label.textContent = shortName(name);
+        card.title = owner === undefined ? (ELENCO[character] ?? "") : name;
       }
     });
 
@@ -158,10 +156,10 @@ export class RoomPanel {
     this.root.remove();
   }
 
-  private copyInvite(): void {
-    void navigator.clipboard?.writeText(this.inviteUrl).then(() => {
+  private copyCode(): void {
+    void navigator.clipboard?.writeText(this.code).then(() => {
       this.copy.dataset["copied"] = "1";
-      this.copy.textContent = "Convite copiado";
+      this.copy.textContent = "Codigo copiado";
       window.setTimeout(() => delete this.copy.dataset["copied"], COPIED_FEEDBACK_MS);
     });
   }
