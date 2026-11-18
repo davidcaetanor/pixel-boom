@@ -34,7 +34,6 @@ import { generateRoomCode } from "./room-code.js";
 const MS_PER_SECOND = 1000;
 /** Faixa de sementes de 31 bits, a mesma que o RNG de shared aceita. */
 const SEED_RANGE = 2 ** 31;
-/** Resposta para entrada sem apelido valido; o cliente ja bloqueia antes, isto e a garantia. */
 const BAD_REQUEST = 400;
 
 export class MatchRoom extends Room<{ state: MatchSchema }> {
@@ -94,7 +93,6 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     writeWaiting(this.state);
   }
 
-  /** Ninguem entra sem apelido proprio: recusa antes de ocupar uma vaga. */
   override onAuth(_client: Client, options: unknown): true {
     const nickname = parseJoinNickname(options);
     if (nickname === null) {
@@ -108,7 +106,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
 
   override onJoin(client: Client, options: unknown): void {
     const nickname = parseJoinNickname(options) ?? "";
-    // Duas entradas simultaneas podem passar juntas pelo onAuth; aqui a sala ja esta atualizada.
+    // Entradas simultaneas passam juntas pelo onAuth.
     if (isNicknameTaken(this.nicknames(), nickname)) {
       throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
     }

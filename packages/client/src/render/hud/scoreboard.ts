@@ -1,7 +1,7 @@
 /**
  * Placar na faixa inferior da arena: um quadro por jogador, com a cor do slot,
  * o nome em forma curta e uma estrela por vitoria necessaria na serie (dourada
- * quando ganha). O nome e sempre creme, legivel sobre qualquer cor de slot.
+ * quando ganha).
  * Eliminados ficam esmaecidos. Posicoes em pixels inteiros.
  */
 import type Phaser from "phaser";

@@ -61,7 +61,7 @@ export function parseCharacterPick(raw: unknown): number | null {
   return index;
 }
 
-/** Opcoes de entrada na sala: `{ nickname }`. Ausente ou fora do formato vira null. */
+/** Opcoes de entrada na sala: `{ nickname }`. */
 export function parseJoinNickname(options: unknown): string | null {
   if (typeof options !== "object" || options === null || Array.isArray(options)) {
     return null;

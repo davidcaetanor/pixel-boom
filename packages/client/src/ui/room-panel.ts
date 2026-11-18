@@ -1,9 +1,4 @@
-/**
- * Sala de espera sobreposta ao canvas: codigo da sala para copiar, escolha de personagem,
- * o botao de iniciar, ativo so para o anfitriao, e a volta ao menu. Navega por
- * teclado como o menu: setas movem o foco e Esc volta ao menu. Nao conhece rede
- * nem Phaser.
- */
+/** Sala de espera sobreposta ao canvas. Nao conhece rede nem Phaser. */
 import { BALANCE, CHARACTER_COUNT, displayName, shortName } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
@@ -26,7 +21,7 @@ export interface RoomPanelView {
 /** Miniatura em escala de arte; o zoom do painel amplia junto com o resto. */
 const PREVIEW_SCALE = 1;
 const COPIED_FEEDBACK_MS = 1500;
-/** Colunas da grade de personagens, iguais as do CSS de .roster. */
+/** Igual ao grid-template-columns de .roster. */
 const ROSTER_COLUMNS = 4;
 /** Espessura do contorno na cor do slot que marca o dono do personagem. */
 const OWNER_OUTLINE = 1;

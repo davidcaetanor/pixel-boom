@@ -100,7 +100,6 @@ function readLobby(remote: RemoteState): Lobby {
   return { hostId: remote.hostId, members };
 }
 
-/** Apelidos de quem esta na sala, por id; quem entrou sem apelido fica de fora. */
 export function nicknamesOf(lobby: Lobby): ReadonlyMap<string, string> {
   const names = new Map<string, string>();
   for (const member of lobby.members) {

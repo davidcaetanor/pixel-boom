@@ -1,8 +1,4 @@
-/**
- * Navegacao dos paineis pelas setas. A ordem e a do DOM; numa grade, cima e
- * baixo pulam uma linha e saem dela para o item antes ou depois. Nao conhece
- * nenhum painel especifico.
- */
+/** Foco pelas setas na ordem do DOM; numa grade, cima e baixo pulam uma linha. */
 export interface FocusGrid {
   readonly items: readonly HTMLElement[];
   readonly columns: number;
@@ -19,7 +15,6 @@ function usable(el: HTMLElement): boolean {
   return !el.hidden && !(el as HTMLButtonElement).disabled && el.offsetParent !== null;
 }
 
-/** Proximo item usavel a partir de `from`, andando `step` por vez, sem dar a volta. */
 function walk(items: readonly HTMLElement[], from: number, step: number): HTMLElement | null {
   for (let i = from + step; i >= 0 && i < items.length; i += step) {
     const item = items[i];
@@ -30,10 +25,7 @@ function walk(items: readonly HTMLElement[], from: number, step: number): HTMLEl
   return null;
 }
 
-/**
- * Move o foco conforme a seta pressionada e devolve true se a tecla foi usada.
- * Esquerda e direita dentro de um campo de texto ficam com o cursor do campo.
- */
+/** Esquerda e direita num campo de texto ficam com o cursor do campo. */
 export function moveFocus(event: KeyboardEvent, items: readonly HTMLElement[], grid?: FocusGrid): boolean {
   const step = STEPS[event.key];
   if (step === undefined) {

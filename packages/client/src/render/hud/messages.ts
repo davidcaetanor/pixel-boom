@@ -1,7 +1,6 @@
 /** Textos do HUD derivados do estado, sem acesso a render. */
 import { BALANCE, MatchPhase, displayName, type MatchState, type Player } from "@pixelboom/shared";
 
-/** Apelido por id de jogador; quem nao tem apelido fica de fora. */
 export type Nicknames = ReadonlyMap<string, string>;
 
 const NO_NICKNAMES: Nicknames = new Map();

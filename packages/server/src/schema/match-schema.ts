@@ -40,7 +40,6 @@ export class MemberSchema extends Schema {
   @type("uint8") character = 0;
   /** Ordem de entrada na sala; define o proximo anfitriao. */
   @type("uint16") order = 0;
-  /** Validado na entrada: a sala recusa quem chega sem apelido. */
   @type("string") nickname = "";
 }
 

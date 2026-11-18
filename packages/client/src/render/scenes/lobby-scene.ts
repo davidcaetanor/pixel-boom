@@ -1,17 +1,14 @@
 /**
- * Menu de entrada: cria uma sala ou entra por codigo. Com `?sala=CODIGO` na
- * URL entra direto com o apelido salvo, ou pede o apelido antes. Ao conectar, o codigo vai para a URL, que vira o link de
- * convite, e a partida abre.
+ * Entrada na sala: cria uma nova ou entra por codigo. Com `?sala=CODIGO` na URL
+ * entra direto com o apelido salvo. Ao conectar, o codigo vai para a URL.
  */
 import Phaser from "phaser";
 import { NICKNAME_TAKEN_CODE, parseRoomCode } from "@pixelboom/shared";
 import { createRoom, joinRoom } from "../../net/room-client.js";
 import { LobbyPanel } from "../../ui/lobby-panel.js";
 
-/** Parametro do convite na URL. */
 export const ROOM_PARAM = "sala";
 
-/** Tira o convite da URL, para a volta ao menu nao reentrar na mesma sala. */
 export function forgetInvite(): void {
   const url = new URL(window.location.href);
   url.searchParams.delete(ROOM_PARAM);
@@ -50,7 +47,6 @@ export class LobbyScene extends Phaser.Scene {
     }
   }
 
-  /** `code` e a sala pedida ao entrar por codigo ou convite; ausente ao criar. */
   private connect(joining: Promise<{ roomId: string }>, code?: string): void {
     this.panel?.setBusy(true);
     joining
@@ -64,7 +60,6 @@ export class LobbyScene extends Phaser.Scene {
         this.panel?.setBusy(false);
         const taken = (error as { code?: unknown } | null)?.code === NICKNAME_TAKEN_CODE;
         if (taken && code !== undefined) {
-          // Volta ao apelido ja mirando a mesma sala, para tentar de novo com outro nome.
           this.panel?.awaitNickname(code);
           this.panel?.showError("Apelido ja usado nesta sala, escolha outro");
           return;

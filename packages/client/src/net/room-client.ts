@@ -34,7 +34,6 @@ async function withFirstState(joining: Promise<Room>): Promise<Room> {
   return room;
 }
 
-/** O servidor recusa a entrada sem apelido valido. */
 export function createRoom(nickname: string): Promise<Room> {
   return withFirstState(new Client(serverUrl()).create(ROOM_NAME, { nickname }));
 }
@@ -47,7 +46,6 @@ export function activeRoom(): Room | null {
   return active;
 }
 
-/** Sai da sala ativa por vontade do jogador. */
 export function leaveRoom(): void {
   void active?.leave();
   active = null;

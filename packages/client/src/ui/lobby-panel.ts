@@ -1,9 +1,4 @@
-/**
- * Menu de entrada sobreposto ao canvas: tela inicial com apelido, jogo online
- * (criar ou entrar por codigo) e como jogar. O apelido e obrigatorio. Navega
- * por teclado: setas movem o foco, Enter confirma e Esc volta para a tela
- * inicial. Nao conhece rede nem Phaser.
- */
+/** Menu de entrada sobreposto ao canvas. Nao conhece rede nem Phaser. */
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, ROOM_CODE_LENGTH, parseNickname } from "@pixelboom/shared";
 import { moveFocus } from "./keyboard-nav.js";
 
@@ -14,7 +9,6 @@ export interface LobbyActions {
 
 type Screen = "inicio" | "online" | "ajuda";
 
-/** Conveniencia do proprio jogador; sem armazenamento disponivel o campo so comeca vazio. */
 const NICKNAME_STORAGE_KEY = "pixelboom.apelido";
 const NICKNAME_ERROR = `Apelido: ${NICKNAME_MIN_LENGTH} a ${NICKNAME_MAX_LENGTH} letras ou numeros`;
 
@@ -41,7 +35,7 @@ function saveNickname(value: string): void {
   try {
     window.localStorage.setItem(NICKNAME_STORAGE_KEY, value);
   } catch {
-    // Sem armazenamento o apelido vale so para esta visita.
+    // localStorage indisponivel em janela privada ou com dados bloqueados.
   }
 }
 
@@ -67,7 +61,6 @@ export class LobbyPanel {
   private readonly codeInput: HTMLInputElement;
   private readonly screens: Record<Screen, HTMLElement>;
   private current: Screen = "inicio";
-  /** Codigo do convite aguardando um apelido valido para entrar. */
   private pendingCode: string | null = null;
   private readonly playButton: HTMLButtonElement;
 
@@ -118,12 +111,10 @@ export class LobbyPanel {
     this.show("inicio");
   }
 
-  /** Apelido valido digitado, ou null se o campo estiver vazio ou invalido. */
   nickname(): string | null {
     return parseNickname(this.nicknameInput.value);
   }
 
-  /** Convite aberto sem apelido salvo: pede o apelido e entra direto nessa sala. */
   awaitNickname(code: string): void {
     this.pendingCode = code;
     this.playButton.textContent = "Entrar na sala";
@@ -249,7 +240,6 @@ export class LobbyPanel {
     this.show("online");
   }
 
-  /** Apelido obrigatorio: vazio ou fora do formato volta para o campo com aviso. */
   private confirmNickname(): string | null {
     const nickname = this.nickname();
     if (nickname === null) {
