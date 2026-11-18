@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BALANCE } from "../src/config/balance.js";
+import { CAST } from "../src/config/cast.js";
 import { canKick, canSetCapacity, isRoomCapacity, isRoomFull } from "../src/rules/room-admin.js";
 
 describe("administracao da sala", () => {
@@ -32,6 +33,6 @@ describe("administracao da sala", () => {
   });
 
   it("o elenco nao depende da capacidade", () => {
-    expect(BALANCE.room.castSize).toBe(BALANCE.room.capacityMax);
+    expect(CAST.length).toBe(BALANCE.room.capacityMax);
   });
 });

@@ -43,6 +43,8 @@ export class MemberSchema extends Schema {
   @type("uint16") order = 0;
   @type("string") nickname = "";
   @type("boolean") bot = false;
+  /** Vazio para humanos. */
+  @type("string") difficulty = "";
 }
 
 /** Fase de transporte: sala aguardando jogadores. */
@@ -58,8 +60,8 @@ export class MatchSchema extends Schema {
   @type("string") hostId = "";
   /** Vagas da sala, contando humanos e bots. */
   @type("uint8") capacity = 0;
-  /** Dificuldade do bot da sala; vazio em sala so de humanos. */
-  @type("string") botDifficulty = "";
+  /** Sala contra bot: fechada para outros humanos. */
+  @type("boolean") closed = false;
   @type({ map: MemberSchema }) members = new MapSchema<MemberSchema>();
   /** Rodada atual da serie, a partir de 1. */
   @type("uint8") round = 0;

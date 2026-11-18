@@ -60,8 +60,6 @@ export const BALANCE = {
   room: {
     capacityMin: 2,
     capacityMax: 8,
-    /** Personagens do elenco; todos ficam disponiveis em qualquer capacidade. */
-    castSize: 8,
   },
 
   /** Rede. */

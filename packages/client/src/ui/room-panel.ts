@@ -1,5 +1,13 @@
 /** Sala de espera sobreposta ao canvas. Nao conhece rede nem Phaser. */
-import { BALANCE, CHARACTER_COUNT, canSetCapacity, displayName, shortName, type BotDifficulty } from "@pixelboom/shared";
+import {
+  BALANCE,
+  BotDifficulty,
+  CHARACTER_COUNT,
+  canAddBot,
+  canSetCapacity,
+  displayName,
+  shortName,
+} from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
 import { announceBack, markBack } from "../audio/ui-sounds.js";
@@ -12,6 +20,9 @@ export interface RoomPanelActions {
   onLeave(): void;
   onCapacity(value: number): void;
   onKick(memberId: string): void;
+  onAddBot(): void;
+  onBotDifficulty(botId: string): void;
+  onBotCharacter(botId: string, character: number): void;
 }
 
 export interface RoomPanelView {
@@ -19,13 +30,15 @@ export interface RoomPanelView {
   readonly localId: string;
   readonly hostId: string;
   readonly capacity: number;
-  readonly botDifficulty: BotDifficulty | null;
+  /** Sala contra bot: sem codigo para convidar. */
+  readonly closed: boolean;
   /** Em ordem de entrada; a posicao define a cor do slot. */
   readonly members: readonly {
     readonly id: string;
     readonly character: number;
     readonly nickname: string | null;
     readonly bot: boolean;
+    readonly difficulty: BotDifficulty | null;
   }[];
 }
 
@@ -46,12 +59,18 @@ export class RoomPanel {
   private readonly title: HTMLElement;
   private readonly cards: HTMLButtonElement[] = [];
   private readonly kicks: HTMLButtonElement[] = [];
+  private readonly badges: HTMLButtonElement[] = [];
+  private readonly addBot: HTMLButtonElement;
   private readonly capacityRow: HTMLElement;
   private readonly capacityLess: HTMLButtonElement;
   private readonly capacityMore: HTMLButtonElement;
   private readonly capacityLabel: HTMLElement;
   /** Dono de cada personagem no ultimo desenho; a tecla Delete remove o do cartao focado. */
   private ownerOf: (character: number) => string | null = () => null;
+  private isBotOf: (character: number) => boolean = () => false;
+  /** Bot escolhido pelo anfitriao; o proximo clique num personagem livre o troca. */
+  private editingBot: string | null = null;
+  private lastView: RoomPanelView | null = null;
   /** Capacidade exibida; adiantada no clique para cliques seguidos somarem antes da resposta. */
   private capacity = 0;
   private occupants = 0;
@@ -93,11 +112,10 @@ export class RoomPanel {
       crown.title = "anfitriao";
       crown.hidden = true;
       card.append(crown, preview, label);
-      card.addEventListener("click", () => actions.onPick(character));
+      card.addEventListener("click", () => this.clickCard(character, actions));
       const kick = document.createElement("button");
       kick.type = "button";
       kick.className = "roster-kick";
-      kick.textContent = "x";
       kick.tabIndex = -1;
       kick.hidden = true;
       kick.addEventListener("click", () => {
@@ -106,11 +124,23 @@ export class RoomPanel {
           actions.onKick(owner);
         }
       });
+      const badge = document.createElement("button");
+      badge.type = "button";
+      badge.className = "roster-bot";
+      badge.tabIndex = -1;
+      badge.hidden = true;
+      badge.addEventListener("click", () => {
+        const owner = this.ownerOf(character);
+        if (owner !== null) {
+          actions.onBotDifficulty(owner);
+        }
+      });
       const cell = document.createElement("div");
       cell.className = "roster-cell";
-      cell.append(card, kick);
+      cell.append(card, badge, kick);
       this.cards.push(card);
       this.kicks.push(kick);
+      this.badges.push(badge);
       grid.append(cell);
     }
 
@@ -128,7 +158,12 @@ export class RoomPanel {
     this.capacityLabel.className = "room-capacity-label";
     this.capacityRow = document.createElement("div");
     this.capacityRow.className = "room-capacity";
-    this.capacityRow.append(this.capacityLess, this.capacityLabel, this.capacityMore);
+    this.addBot = document.createElement("button");
+    this.addBot.type = "button";
+    this.addBot.textContent = "+ Bot";
+    this.addBot.className = "room-add-bot";
+    this.addBot.addEventListener("click", () => actions.onAddBot());
+    this.capacityRow.append(this.capacityLess, this.capacityLabel, this.capacityMore, this.addBot);
 
     this.status = document.createElement("p");
     this.status.className = "room-status";
@@ -153,7 +188,12 @@ export class RoomPanel {
       if (event.key === "Escape") {
         event.preventDefault();
         announceBack();
-        actions.onLeave();
+        if (this.editingBot !== null) {
+          this.editingBot = null;
+          this.redraw();
+        } else {
+          actions.onLeave();
+        }
         return;
       }
       const focusedCard = this.cards.indexOf(document.activeElement as HTMLButtonElement);
@@ -162,7 +202,7 @@ export class RoomPanel {
         this.kicks[focusedCard]?.click();
         return;
       }
-      moveFocus(event, [this.copy, ...this.cards, this.capacityLess, this.capacityMore, this.start, leave], {
+      moveFocus(event, [this.copy, ...this.cards, this.capacityLess, this.capacityMore, this.addBot, this.start, leave], {
         items: this.cards,
         columns: ROSTER_COLUMNS,
       });
@@ -171,32 +211,51 @@ export class RoomPanel {
   }
 
   render(view: RoomPanelView): void {
+    this.lastView = view;
     this.code = view.code;
     if (!this.copy.dataset["copied"]) {
       this.copy.textContent = `Codigo ${view.code}  |  copiar codigo`;
     }
 
     const owners = new Map(
-      view.members.map((m, slot) => [m.character, { id: m.id, slot, nickname: m.nickname, bot: m.bot }]),
+      view.members.map((m, slot) => [m.character, { ...m, slot }]),
     );
     const isHost = view.localId === view.hostId;
-    const canKick = (id: string | undefined, bot: boolean | undefined): boolean =>
-      isHost && view.botDifficulty === null && id !== undefined && id !== view.hostId && bot !== true;
+    if (!isHost || !view.members.some((m) => m.id === this.editingBot)) {
+      this.editingBot = null;
+    }
+    const editing = this.editingBot;
     this.ownerOf = (character) => owners.get(character)?.id ?? null;
-    this.title.textContent = view.botDifficulty === null ? "Sala" : `Contra bot: ${DIFFICULTY_LABEL[view.botDifficulty]}`;
-    this.copy.hidden = view.botDifficulty !== null;
+    this.isBotOf = (character) => owners.get(character)?.bot === true;
+    this.title.textContent = view.closed ? "Contra bot" : "Sala";
+    this.copy.hidden = view.closed;
     this.cards.forEach((card, character) => {
       const owner = owners.get(character);
       const mine = owner?.id === view.localId;
-      card.disabled = owner !== undefined && !mine;
+      const hostsBot = isHost && owner?.bot === true;
+      card.disabled = owner !== undefined && !mine && !hostsBot;
       card.classList.toggle("is-mine", mine);
-      card.classList.toggle("is-bot", owner?.bot === true);
+      card.classList.toggle("is-taken", owner !== undefined && !mine);
+      card.classList.toggle("is-editing", owner !== undefined && owner.id === editing);
+      card.classList.toggle("is-target", editing !== null && owner === undefined);
       card.style.outline =
-        owner === undefined ? "" : `${mine ? OWNER_OUTLINE_MINE : OWNER_OUTLINE}px solid ${corCss(corDoSlot(owner.slot))}`;
+        owner === undefined
+          ? ""
+          : `${mine || owner.id === editing ? OWNER_OUTLINE_MINE : OWNER_OUTLINE}px solid ${corCss(corDoSlot(owner.slot))}`;
+      const badge = this.badges[character];
+      if (badge !== undefined) {
+        const difficulty = owner?.difficulty ?? null;
+        badge.hidden = difficulty === null;
+        badge.disabled = !isHost;
+        badge.classList.toggle("is-hard", difficulty === BotDifficulty.Hard);
+        badge.title = difficulty === null ? "" : `Bot ${DIFFICULTY_LABEL[difficulty]}${isHost ? ", clique para trocar" : ""}`;
+        badge.setAttribute("aria-label", badge.title);
+      }
       const kick = this.kicks[character];
       if (kick !== undefined) {
-        kick.hidden = !canKick(owner?.id, owner?.bot);
+        kick.hidden = !isHost || owner === undefined || owner.id === view.hostId;
         kick.title = owner === undefined ? "" : `Remover ${displayName(owner.nickname, owner.slot)} da sala`;
+        kick.setAttribute("aria-label", kick.title);
       }
       const crown = card.querySelector<HTMLElement>(".roster-host");
       if (crown !== null) {
@@ -204,9 +263,9 @@ export class RoomPanel {
       }
       const label = card.querySelector(".roster-label");
       if (label !== null) {
-        const name = owner === undefined ? "livre" : displayName(owner.nickname, owner.slot);
+        const name = owner === undefined ? (ELENCO[character] ?? "").toUpperCase() : displayName(owner.nickname, owner.slot);
         label.textContent = shortName(name);
-        card.title = owner === undefined ? (ELENCO[character] ?? "") : name;
+        card.title = name;
       }
     });
 
@@ -217,7 +276,7 @@ export class RoomPanel {
 
     const count = view.members.length;
     this.occupants = count;
-    this.capacityRow.hidden = !isHost || view.botDifficulty !== null;
+    this.capacityRow.hidden = !isHost;
     const pending = this.pendingCapacity;
     if (pending === null || pending === view.capacity || !canSetCapacity(pending, count)) {
       this.pendingCapacity = null;
@@ -229,12 +288,36 @@ export class RoomPanel {
     this.start.hidden = !isHost;
     this.start.disabled = count < needed;
     const players = `${count}/${view.capacity} jogadores`;
-    if (view.botDifficulty !== null) {
+    const editingName = view.members.find((m) => m.id === editing)?.nickname;
+    if (editingName !== undefined) {
+      this.status.textContent = `${editingName ?? "Bot"} selecionado: clique num personagem livre`;
+    } else if (view.closed) {
       this.status.textContent = "Escolha seu personagem e inicie";
     } else if (isHost) {
       this.status.textContent = count < needed ? `${players}, minimo ${needed} para iniciar` : players;
     } else {
       this.status.textContent = `${players}, aguardando o anfitriao iniciar`;
+    }
+  }
+
+  private clickCard(character: number, actions: RoomPanelActions): void {
+    const owner = this.ownerOf(character);
+    if (this.isBotOf(character) && owner !== null) {
+      this.editingBot = this.editingBot === owner ? null : owner;
+      this.redraw();
+      return;
+    }
+    if (this.editingBot !== null && owner === null) {
+      actions.onBotCharacter(this.editingBot, character);
+      this.editingBot = null;
+      return;
+    }
+    actions.onPick(character);
+  }
+
+  private redraw(): void {
+    if (this.lastView !== null) {
+      this.render(this.lastView);
     }
   }
 
@@ -251,6 +334,7 @@ export class RoomPanel {
     this.capacityLabel.textContent = `${value} vagas`;
     this.capacityLess.disabled = !canSetCapacity(value - 1, this.occupants);
     this.capacityMore.disabled = !canSetCapacity(value + 1, this.occupants);
+    this.addBot.disabled = !canAddBot(this.occupants, value);
   }
 
   dispose(): void {
