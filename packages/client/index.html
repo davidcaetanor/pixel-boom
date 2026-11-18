@@ -152,6 +152,31 @@
       .room-status {
         margin: 0;
       }
+      .roster-cell {
+        position: relative;
+        display: flex;
+      }
+      .lobby .roster-kick {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        padding: 0;
+        border-width: 4px;
+        border-image: url(/ui-botao.png) 10 12 fill / 4px stretch;
+        line-height: 8px;
+      }
+      .room-capacity {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .room-capacity[hidden] {
+        display: none;
+      }
+      .room-capacity-label {
+        min-width: 8ch;
+        text-align: center;
+      }
       .lobby-error {
         min-height: 10px;
         margin: 0;

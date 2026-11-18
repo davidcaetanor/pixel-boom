@@ -22,7 +22,7 @@ export class LobbyScene extends Phaser.Scene {
     super({ key: "lobby" });
   }
 
-  create(): void {
+  create(data?: { readonly notice?: string }): void {
     this.panel = new LobbyPanel({
       onCreate: (nickname) => this.connect(createRoom(nickname)),
       onCreateBot: (nickname, difficulty) => this.connect(createRoom(nickname, difficulty)),
@@ -36,6 +36,10 @@ export class LobbyScene extends Phaser.Scene {
       },
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.panel?.dispose());
+    if (data?.notice !== undefined) {
+      this.panel.showError(data.notice);
+      return;
+    }
 
     const fromUrl = parseRoomCode(new URLSearchParams(window.location.search).get(ROOM_PARAM) ?? "");
     if (fromUrl !== null) {

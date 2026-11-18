@@ -48,6 +48,7 @@ export interface RemoteState {
   winnerId: string;
   connected: number;
   hostId: string;
+  capacity: number;
   botDifficulty: string;
   members: { forEach(cb: (m: RemoteMember) => void): void };
   round: number;
@@ -79,6 +80,8 @@ export interface Member {
 /** Quem esta na sala, valido na espera e durante a partida. */
 export interface Lobby {
   readonly hostId: string;
+  /** Vagas da sala, contando humanos e bots. */
+  readonly capacity: number;
   readonly botDifficulty: BotDifficulty | null;
   /** Em ordem de entrada. */
   readonly members: readonly Member[];
@@ -114,6 +117,7 @@ function readLobby(remote: RemoteState): Lobby {
   members.sort((a, b) => a.order - b.order);
   return {
     hostId: remote.hostId,
+    capacity: remote.capacity,
     botDifficulty: isBotDifficulty(remote.botDifficulty) ? remote.botDifficulty : null,
     members,
   };

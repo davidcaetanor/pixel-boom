@@ -6,6 +6,7 @@
  */
 import Phaser from "phaser";
 import {
+  KICKED_CODE,
   IDLE_INPUT,
   MatchPhase,
   advance,
@@ -24,6 +25,7 @@ import { SnapshotBuffer } from "../../net/interpolation.js";
 import { predictionFor, type LocalPrediction } from "../../net/prediction.js";
 import { activeRoom, leaveRoom } from "../../net/room-client.js";
 import { nicknamesOf, readSnapshot, type Lobby, type MatchSnapshot, type RemoteState } from "../../net/snapshot.js";
+import { KICKED_NOTICE } from "../../ui/labels.js";
 import { RoomPanel } from "../../ui/room-panel.js";
 import { forgetInvite } from "./lobby-scene.js";
 import { comemora, onlineBanner, roundLabel } from "../hud/messages.js";
@@ -103,6 +105,13 @@ export class OnlineScene extends Phaser.Scene {
     this.pickupText = new PickupText(this);
     this.status = textoHud(this, 8, 4, `SALA ${room.roomId}`).setDepth(200);
 
+    const onKicked = (code: number): void => {
+      if (code === KICKED_CODE) {
+        forgetInvite();
+        this.scene.start("lobby", { notice: KICKED_NOTICE });
+      }
+    };
+    room.onLeave(onKicked);
     const onState = (state: unknown): void => this.receive(state as RemoteState);
     room.onStateChange(onState);
     onState(room.state);
@@ -116,6 +125,7 @@ export class OnlineScene extends Phaser.Scene {
     document.addEventListener("visibilitychange", onHidden);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       room.onStateChange.remove(onState);
+      room.onLeave.remove(onKicked);
       document.removeEventListener("visibilitychange", onHidden);
       this.keyboard.dispose();
       this.closePanel();
@@ -236,12 +246,15 @@ export class OnlineScene extends Phaser.Scene {
     this.panel ??= new RoomPanel({
       onPick: (character) => this.room.send("character", { index: character }),
       onStart: () => this.room.send("start"),
+      onCapacity: (value) => this.room.send("capacity", { value }),
+      onKick: (id) => this.room.send("kick", { id }),
       onLeave: () => this.backToMenu(),
     });
     this.panel.render({
       code: this.room.roomId,
       localId: this.room.sessionId,
       hostId: lobby.hostId,
+      capacity: lobby.capacity,
       botDifficulty: lobby.botDifficulty,
       members: lobby.members,
     });

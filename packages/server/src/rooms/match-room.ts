@@ -2,7 +2,8 @@
  * Sala autoritativa: roda a simulacao de shared e decide o estado; o cliente
  * envia entradas numeradas, consumidas uma por tick. A sala tem um codigo
  * curto como id e uma espera em que cada jogador escolhe personagem. O
- * anfitriao inicia a serie; ao fim dela todos voltam para a espera. Na sala
+ * anfitriao define a capacidade, remove membros e inicia a serie; ao fim
+ * dela todos voltam para a espera. Na sala
  * contra bot, o bot entra logo depois do criador e a sala fecha para outros.
  */
 import { Room, ServerError, type Client } from "@colyseus/core";
@@ -14,7 +15,9 @@ import {
   TICK_SECONDS,
   advance,
   applySeriesScore,
+  canKick,
   canPickCharacter,
+  canSetCapacity,
   createBotMemory,
   createFixedLoop,
   createMatchState,
@@ -23,6 +26,8 @@ import {
   firstFreeCharacter,
   keepPresentDuelists,
   isNicknameTaken,
+  isRoomFull,
+  KICKED_CODE,
   recordRound,
   step,
   type BotDifficulty,
@@ -34,7 +39,14 @@ import {
 } from "@pixelboom/shared";
 import { writeLobby, writeMatch, writeWaiting, type LobbyMember } from "../schema/mappers.js";
 import { MatchSchema } from "../schema/match-schema.js";
-import { parseBotDifficulty, parseCharacterPick, parseInput, parseJoinNickname } from "../validation/input-validator.js";
+import {
+  parseBotDifficulty,
+  parseCapacity,
+  parseCharacterPick,
+  parseInput,
+  parseJoinNickname,
+  parseKick,
+} from "../validation/input-validator.js";
 import { generateRoomCode } from "./room-code.js";
 
 const MS_PER_SECOND = 1000;
@@ -44,8 +56,9 @@ const BAD_REQUEST = 400;
 const BOT_ID = "bot";
 const BOT_NICKNAMES = ["BOT", "CPU", "ROBO"];
 
+
 export class MatchRoom extends Room<{ state: MatchSchema }> {
-  override maxClients = BALANCE.net.maxClientsPerRoom;
+  override maxClients: number = BALANCE.room.capacityMax;
   override maxMessagesPerSecond = BALANCE.net.maxMessagesPerSecond;
   override state = new MatchSchema();
 
@@ -80,6 +93,26 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
         this.publishLobby();
       }
     },
+    capacity: (client: Client, raw: unknown): void => {
+      const value = parseCapacity(raw);
+      if (client.sessionId !== this.hostId || this.match !== null || this.botDifficulty !== null) {
+        return;
+      }
+      if (canSetCapacity(value, this.members.size)) {
+        this.maxClients = value;
+        this.state.capacity = value;
+        this.syncLock();
+      }
+    },
+    kick: (client: Client, raw: unknown): void => {
+      const target = parseKick(raw);
+      if (this.match !== null || target === null) {
+        return;
+      }
+      if (canKick(client.sessionId, this.hostId, target, this.members.keys())) {
+        this.clients.getById(target)?.leave(KICKED_CODE);
+      }
+    },
     start: (client: Client): void => {
       const canStart =
         client.sessionId === this.hostId &&
@@ -95,6 +128,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     this.roomId = generateRoomCode();
     this.botDifficulty = parseBotDifficulty(options);
     this.state.botDifficulty = this.botDifficulty ?? "";
+    this.state.capacity = this.maxClients;
     this.setPatchRate(MS_PER_SECOND / BALANCE.net.patchesPerSecond);
     this.setSimulationInterval((deltaMs) => {
       const ticks = advance(this.loop, deltaMs / MS_PER_SECOND);
@@ -131,8 +165,8 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     }
     if (this.botDifficulty !== null && !this.members.has(BOT_ID)) {
       this.addBot();
-      void this.lock();
     }
+    this.syncLock();
     this.publishLobby();
   }
 
@@ -150,6 +184,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     if (this.hostId === client.sessionId) {
       this.hostId = this.oldestMember() ?? "";
     }
+    this.syncLock();
     this.publishLobby();
     if (this.match !== null) {
       this.match = {
@@ -158,6 +193,15 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
           p.id === client.sessionId ? { ...p, alive: false } : p,
         ),
       };
+    }
+  }
+
+  /** A sala contra bot fica sempre fechada; as outras, so enquanto cheias. */
+  private syncLock(): void {
+    if (this.botDifficulty !== null || isRoomFull(this.members.size, this.maxClients)) {
+      void this.lock();
+    } else {
+      void this.unlock();
     }
   }
 
@@ -179,7 +223,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     const everyone = [...this.members]
       .sort((a, b) => a[1].order - b[1].order)
       .map(([id]) => id)
-      .slice(0, BALANCE.net.maxClientsPerRoom);
+      .slice(0, this.maxClients);
     const duel = this.series.duel.length > 0;
     const ids = duel ? everyone.filter((id) => this.series.duel.includes(id)) : everyone;
     const slots = ids.map((id) => everyone.indexOf(id));

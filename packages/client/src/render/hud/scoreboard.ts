@@ -49,6 +49,8 @@ export class Scoreboard {
 
   render(players: readonly Player[], names: Nicknames): void {
     const bySlot = new Map(players.map((p) => [p.slot, p]));
+    const columns = Math.max(0, ...players.map((p) => p.slot + 1));
+    const offset = ((SLOTS - columns) * CELL_WIDTH) / 2;
     this.entries.forEach((entry, slot) => {
       const player = bySlot.get(slot);
       const visible = player !== undefined;
@@ -60,6 +62,9 @@ export class Scoreboard {
       if (player === undefined) {
         return;
       }
+      const left = offset + slot * CELL_WIDTH + SWATCH_SIZE;
+      entry.swatch.setX(left);
+      entry.text.setX(left + SWATCH_SIZE);
       entry.text.setText(shortName(playerName(player, names))).setTint(COR_NOME);
       const alpha = player.alive ? 1 : ELIMINATED_ALPHA;
       entry.swatch.setAlpha(alpha);
