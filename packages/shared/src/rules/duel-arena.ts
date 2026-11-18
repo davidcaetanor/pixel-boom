@@ -24,11 +24,15 @@ function distance(a: number, b: number): number {
   return Math.abs(cellX(a) - cellX(b)) + Math.abs(cellY(a) - cellY(b));
 }
 
-/** Cada spawn novo e o piso mais distante dos ja escolhidos; o primeiro e o mais acima a esquerda. */
-export function duelSpawns(grid: Grid, count: number): { x: number; y: number }[] {
+/**
+ * Spawns na faixa interna, longe de onde a espiral comeca: cada novo e o piso
+ * mais distante dos ja escolhidos, o primeiro o mais acima a esquerda.
+ */
+export function duelSpawns(grid: Grid, count: number, fromRing = 0): { x: number; y: number }[] {
+  const inner = new Set(SUDDEN_DEATH_RINGS.slice(fromRing).flat());
   const floor: number[] = [];
   for (let cell = 0; cell < CELL_COUNT; cell += 1) {
-    if (grid.cells[cell] === CellKind.Floor) {
+    if (grid.cells[cell] === CellKind.Floor && inner.has(cell)) {
       floor.push(cell);
     }
   }

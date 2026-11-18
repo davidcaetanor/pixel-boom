@@ -10,6 +10,7 @@ import { POWER_UP_KINDS, PowerUpKind } from "../src/domain/powerup.js";
 import type { InputsByPlayer } from "../src/commands/input-command.js";
 import { createStaticGrid } from "../src/rules/map-generation.js";
 import { applyPowerUp, rollDrops, weightedKind } from "../src/rules/pickup.js";
+import { duelSpawns } from "../src/rules/duel-arena.js";
 import {
   CLOSABLE_RINGS,
   DUEL_RINGS,
@@ -352,6 +353,16 @@ describe("duelo de desempate", () => {
       s = step(s, {}, TICK_SECONDS);
     }
     expect(s.winnerId).not.toBeNull();
+  });
+
+  it("sorteia quem nasce em cada ponto, para o primeiro da sala nao nascer sempre onde a espiral comeca", () => {
+    const firsts = new Set<number>();
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const s = createMatchState(seed, ["a", "b"], { duel: true });
+      const p = s.players[0];
+      firsts.add(cellIndex(Math.floor(p?.x ?? 0), Math.floor(p?.y ?? 0)) === duelSpawns(s.grid, 2, BALANCE.duel.closedRings + 1).map((c) => cellIndex(c.x, c.y))[0] ? 1 : 0);
+    }
+    expect(firsts.size).toBe(2);
   });
 
   it("cabe a sala inteira no duelo em todo layout", () => {

@@ -24,7 +24,7 @@ import { checkVictory } from "../rules/victory.js";
 import { movePlayer } from "../rules/movement.js";
 import { assignSpawns } from "../rules/spawn-assignment.js";
 import { duelGrid, duelSpawns } from "../rules/duel-arena.js";
-import { seedRng } from "./rng.js";
+import { seedRng, shuffle } from "./rng.js";
 
 /** Jogador no centro do spawn indicado. O slot define cor e posicao no placar. */
 export function createPlayer(id: string, slot: number, spawnIndex = slot): Player {
@@ -66,7 +66,8 @@ export function createMatchState(
   const slotOf = (i: number): number => options.slots?.[i] ?? i;
   const duel = options.duel === true;
   const grid = duel ? duelGrid(map.grid, BALANCE.duel.closedRings) : map.grid;
-  const duelPoints = duel ? duelSpawns(grid, playerIds.length) : [];
+  // Sorteados: a espiral comeca num canto e quem nascesse nele perderia sempre.
+  const [duelPoints, rng] = duel ? shuffle(duelSpawns(grid, playerIds.length, BALANCE.duel.closedRings + 1), spawns.rng) : [[], spawns.rng];
   const players = playerIds.map((id, i) => {
     const player = createPlayer(id, slotOf(i), spawns.spawnIndices[i] ?? i);
     const point = duelPoints[i];
@@ -86,7 +87,7 @@ export function createMatchState(
     cellsClosed: 0,
     winnerId: null,
     nextEntityId: 1,
-    rng: spawns.rng,
+    rng,
   };
 }
 
