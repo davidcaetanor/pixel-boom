@@ -4,7 +4,7 @@
  * curto como id e uma espera em que cada jogador escolhe personagem. O
  * anfitriao inicia a serie; ao fim dela todos voltam para a espera.
  */
-import { Room, type Client } from "@colyseus/core";
+import { Room, ServerError, type Client } from "@colyseus/core";
 import {
   BALANCE,
   InputQueue,
@@ -32,6 +32,8 @@ import { generateRoomCode } from "./room-code.js";
 const MS_PER_SECOND = 1000;
 /** Faixa de sementes de 31 bits, a mesma que o RNG de shared aceita. */
 const SEED_RANGE = 2 ** 31;
+/** Resposta para entrada sem apelido valido; o cliente ja bloqueia antes, isto e a garantia. */
+const BAD_REQUEST = 400;
 
 export class MatchRoom extends Room<{ state: MatchSchema }> {
   override maxClients = BALANCE.net.maxClientsPerRoom;
@@ -90,10 +92,18 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     writeWaiting(this.state);
   }
 
+  /** Ninguem entra sem apelido: recusa a reserva antes de ocupar uma vaga. */
+  override onAuth(_client: Client, options: unknown): true {
+    if (parseJoinNickname(options) === null) {
+      throw new ServerError(BAD_REQUEST, "apelido obrigatorio");
+    }
+    return true;
+  }
+
   override onJoin(client: Client, options: unknown): void {
     this.queues.set(client.sessionId, new InputQueue());
     const character = firstFreeCharacter(this.charactersExcept(client.sessionId)) ?? 0;
-    const nickname = parseJoinNickname(options);
+    const nickname = parseJoinNickname(options) ?? "";
     this.members.set(client.sessionId, { character, order: this.nextOrder, nickname });
     this.nextOrder += 1;
     if (this.hostId === "") {

@@ -81,7 +81,7 @@ export function writeMatch(
 export interface LobbyMember {
   readonly character: number;
   readonly order: number;
-  readonly nickname: string | null;
+  readonly nickname: string;
 }
 
 export function writeLobby(
@@ -101,7 +101,7 @@ export function writeLobby(
     s.id = id;
     s.character = member.character;
     s.order = member.order;
-    s.nickname = member.nickname ?? "";
+    s.nickname = member.nickname;
     if (!target.members.has(id)) {
       target.members.set(id, s);
     }
