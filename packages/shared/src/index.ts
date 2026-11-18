@@ -1,4 +1,8 @@
 /** API publica da simulacao, consumida por server e client. */
+export * from "./ai/bot-match.js";
+export * from "./ai/danger.js";
+export * from "./ai/decide.js";
+export * from "./ai/reach.js";
 export * from "./config/arena.js";
 export * from "./config/arena-layouts.js";
 export * from "./config/balance.js";
