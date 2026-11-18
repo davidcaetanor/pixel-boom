@@ -172,8 +172,8 @@ export class LobbyPanel {
     screen.append(
       title,
       nickname,
-      this.botButton,
       this.playButton,
+      this.botButton,
       button("Como jogar", () => this.show("ajuda")),
     );
     return screen;
