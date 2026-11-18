@@ -2,7 +2,13 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#14121c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icone-192.png" />
     <title>PixelBoom</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <style>
@@ -12,11 +18,25 @@
         height: 100%;
         background: #14121c;
         overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+      }
+      .is-touch body {
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      .is-touch .lobby button,
+      .is-touch .lobby input {
+        touch-action: manipulation;
       }
       #game {
         display: grid;
         place-items: center;
         height: 100%;
+        height: 100dvh;
       }
       canvas {
         image-rendering: pixelated;
@@ -93,8 +113,10 @@
         border-image: url(/ui-botao.png) 10 12 fill / 10px 12px stretch;
         cursor: pointer;
       }
-      .lobby button:hover:not(:disabled) {
-        border-image-source: url(/ui-botao-hover.png);
+      @media (hover: hover) {
+        .lobby button:hover:not(:disabled) {
+          border-image-source: url(/ui-botao-hover.png);
+        }
       }
       .lobby button:active:not(:disabled) {
         border-image-source: url(/ui-botao-pressionado.png);
@@ -218,9 +240,13 @@
         border-image: url(/ui-slot.png) 10 fill / 10px stretch;
         outline-offset: 0;
       }
-      .lobby .roster-card:hover:not(:disabled),
       .lobby .roster-card:active:not(:disabled) {
         border-image-source: url(/ui-slot-hover.png);
+      }
+      @media (hover: hover) {
+        .lobby .roster-card:hover:not(:disabled) {
+          border-image-source: url(/ui-slot-hover.png);
+        }
       }
       .lobby .roster-card.is-mine,
       .lobby .roster-card.is-mine:hover {
@@ -382,10 +408,207 @@
         width: 16px;
         height: 16px;
       }
+      /*
+       * Controles de toque. As pecas ficam em escala inteira (--touch-zoom) e,
+       * quando sobra espaco ao lado da arena, centradas nessa faixa.
+       */
+      .touch {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        --pad-l: calc(98px * var(--touch-zoom, 1));
+        --pad-a: calc(103px * var(--touch-zoom, 1));
+        --bomba: calc(74px * var(--touch-zoom, 1));
+        --pausa: calc(25px * var(--touch-zoom, 1));
+        --base: max(calc(env(safe-area-inset-bottom) + 12px), 9vh);
+      }
+      .touch[hidden] {
+        display: none;
+      }
+      .touch-zona {
+        position: absolute;
+        top: 24%;
+        bottom: 0;
+        width: 44%;
+        pointer-events: auto;
+        touch-action: none;
+      }
+      .touch-zona.is-andar {
+        left: 0;
+      }
+      .touch-zona.is-bomba {
+        right: 0;
+      }
+      .touch-pad,
+      .touch-bomba,
+      .touch-pausa,
+      .touch-seta {
+        background-size: 100% 100%;
+        image-rendering: pixelated;
+      }
+      .touch-pad {
+        position: absolute;
+        left: max(calc(env(safe-area-inset-left) + 12px), calc((var(--arena-margem, 0px) - var(--pad-l)) / 2));
+        bottom: var(--base);
+        width: var(--pad-l);
+        height: var(--pad-a);
+        background-image: url(/ui-toque-direcional.png);
+      }
+      .touch-seta {
+        position: absolute;
+        inset: 0;
+        display: none;
+      }
+      .touch-seta.is-up {
+        background-image: url(/ui-toque-seta-cima.png);
+      }
+      .touch-seta.is-right {
+        background-image: url(/ui-toque-seta-direita.png);
+      }
+      .touch-seta.is-down {
+        background-image: url(/ui-toque-seta-baixo.png);
+      }
+      .touch-seta.is-left {
+        background-image: url(/ui-toque-seta-esquerda.png);
+      }
+      .touch-pad[data-y="-1"] .is-up,
+      .touch-pad[data-x="1"] .is-right,
+      .touch-pad[data-y="1"] .is-down,
+      .touch-pad[data-x="-1"] .is-left {
+        display: block;
+      }
+      .touch-bomba {
+        position: absolute;
+        right: max(calc(env(safe-area-inset-right) + 12px), calc((var(--arena-margem, 0px) - var(--bomba)) / 2));
+        bottom: calc(var(--base) + (var(--pad-a) - var(--bomba)) / 2);
+        width: var(--bomba);
+        height: var(--bomba);
+        background-image: url(/ui-toque-bomba.png);
+      }
+      .touch-bomba.is-ativo {
+        background-image: url(/ui-toque-bomba-pressionada.png);
+      }
+      .touch-pausa {
+        position: absolute;
+        top: max(calc(env(safe-area-inset-top) + 8px), 8px);
+        right: max(calc(env(safe-area-inset-right) + 8px), calc((var(--arena-margem, 0px) - var(--pausa)) / 2));
+        width: var(--pausa);
+        height: var(--pausa);
+        padding: 0;
+        border: none;
+        background-color: transparent;
+        background-image: url(/ui-toque-pausa.png);
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+      .touch-pausa::after {
+        content: "";
+        position: absolute;
+        inset: -10px;
+      }
+      .touch-pausa:active {
+        filter: brightness(0.8);
+      }
+      /* Alvo de toque maior que o desenho, sem mudar o visual dos paineis. */
+      .is-touch .lobby button:not(.room-gear, .roster-kick, .roster-bot) {
+        position: relative;
+      }
+      .is-touch .lobby button::after {
+        content: "";
+        position: absolute;
+        inset: -14px -16px;
+      }
+      .is-touch .lobby .roster-card::after {
+        inset: -12px;
+      }
+      .is-touch .lobby .room-gear::after {
+        inset: -8px;
+      }
+      .is-touch .lobby .roster-kick::after,
+      .is-touch .lobby .roster-bot::after {
+        inset: -6px;
+      }
+      .girar {
+        display: none;
+      }
+      @media (orientation: portrait) {
+        .is-touch .girar {
+          position: fixed;
+          inset: 0;
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #14121c;
+          font-family: "Courier New", monospace;
+          color: #f4ecd8;
+        }
+      }
+      .girar .ui-panel {
+        padding: 8px 12px;
+      }
+      .girar-aparelho {
+        width: 20px;
+        height: 32px;
+        box-sizing: border-box;
+        border: 6px solid transparent;
+        border-image: url(/ui-slot.png) 10 fill / 6px stretch;
+        animation: girar 2s steps(1) infinite;
+      }
+      @keyframes girar {
+        50% {
+          transform: rotate(-90deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .girar-aparelho {
+          animation: none;
+          transform: rotate(-90deg);
+        }
+      }
+      /*
+       * Sala em tela baixa: os cards a esquerda, titulo e acoes a direita.
+       * pixel-scale.ts liga .ui-deitada quando esse formato ganha zoom.
+       */
+      .ui-deitada .room .ui-panel {
+        display: grid;
+        grid-template-columns: auto 160px;
+        grid-auto-rows: auto;
+        column-gap: 16px;
+        row-gap: 8px;
+        align-items: center;
+        justify-items: center;
+      }
+      .ui-deitada .room .ui-panel > * {
+        grid-column: 2;
+      }
+      .ui-deitada .room .ui-panel > .roster {
+        grid-column: 1;
+        grid-row: 1 / span 7;
+      }
+      .ui-deitada .room .room-summary,
+      .ui-deitada .room .room-status {
+        max-width: 160px;
+        text-align: center;
+      }
+      .ui-deitada .room h1 {
+        justify-self: start;
+        font-size: 16px;
+      }
+      .ui-deitada .room .room-gear {
+        top: -3px;
+        right: 0;
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div class="girar" role="alert">
+      <div class="ui-panel">
+        <div class="girar-aparelho"></div>
+        <p>Gire o celular</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

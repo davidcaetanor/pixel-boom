@@ -1,10 +1,13 @@
 import Phaser from "phaser";
 import { LOGICAL_HEIGHT, LOGICAL_WIDTH } from "@pixelboom/shared";
+import { prepareTouchScreen } from "./app/touch-screen.js";
 import { acompanhaEscala, zoomCss } from "./render/pixel-scale.js";
 import { BootScene } from "./render/scenes/boot-scene.js";
 import { LobbyScene } from "./render/scenes/lobby-scene.js";
 import { MatchScene } from "./render/scenes/match-scene.js";
 import { OnlineScene } from "./render/scenes/online-scene.js";
+
+prepareTouchScreen();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
