@@ -38,6 +38,7 @@ interface RemoteMember {
   order: number;
   nickname: string;
   bot: boolean;
+  difficulty: string;
 }
 
 /** Formato do estado da sala, independente das classes de schema do servidor. */
@@ -49,7 +50,7 @@ export interface RemoteState {
   connected: number;
   hostId: string;
   capacity: number;
-  botDifficulty: string;
+  closed: boolean;
   members: { forEach(cb: (m: RemoteMember) => void): void };
   round: number;
   seriesFinished: boolean;
@@ -75,6 +76,8 @@ export interface Member {
   readonly order: number;
   readonly nickname: string | null;
   readonly bot: boolean;
+  /** Null para humanos. */
+  readonly difficulty: BotDifficulty | null;
 }
 
 /** Quem esta na sala, valido na espera e durante a partida. */
@@ -82,7 +85,8 @@ export interface Lobby {
   readonly hostId: string;
   /** Vagas da sala, contando humanos e bots. */
   readonly capacity: number;
-  readonly botDifficulty: BotDifficulty | null;
+  /** Sala contra bot. */
+  readonly closed: boolean;
   /** Em ordem de entrada. */
   readonly members: readonly Member[];
 }
@@ -112,13 +116,14 @@ function readLobby(remote: RemoteState): Lobby {
       order: m.order,
       nickname: m.nickname === "" ? null : m.nickname,
       bot: m.bot,
+      difficulty: isBotDifficulty(m.difficulty) ? m.difficulty : null,
     }),
   );
   members.sort((a, b) => a.order - b.order);
   return {
     hostId: remote.hostId,
     capacity: remote.capacity,
-    botDifficulty: isBotDifficulty(remote.botDifficulty) ? remote.botDifficulty : null,
+    closed: remote.closed,
     members,
   };
 }

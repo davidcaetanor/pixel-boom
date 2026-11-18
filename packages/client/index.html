@@ -173,10 +173,58 @@
         border-image: none;
         background-image: url(/ui-remover-hover.png);
       }
+      .room .ui-panel {
+        gap: 12px;
+      }
       .room-capacity {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
+      }
+      .lobby .room-add-bot {
+        margin-left: 12px;
+      }
+      /* Recuado para dentro do cartao: na grade, o X do vizinho avanca 5 px sobre ele. */
+      .lobby .roster-bot {
+        position: absolute;
+        top: -5px;
+        left: 6px;
+        width: 24px;
+        height: 12px;
+        padding: 0;
+        border: none;
+        border-image: none;
+        background: url(/ui-bot-normal.png) no-repeat;
+      }
+      .lobby .roster-bot.is-hard {
+        background-image: url(/ui-bot-dificil.png);
+      }
+      .lobby .roster-bot:hover:not(:disabled),
+      .lobby .roster-bot:focus-visible {
+        border-image: none;
+        background-image: url(/ui-bot-normal-foco.png);
+      }
+      .lobby .roster-bot.is-hard:hover:not(:disabled),
+      .lobby .roster-bot.is-hard:focus-visible {
+        background-image: url(/ui-bot-dificil-foco.png);
+      }
+      .lobby .roster-bot:disabled {
+        border-image: none;
+        cursor: default;
+      }
+      .lobby .roster-card.is-taken,
+      .lobby .roster-card.is-taken:hover {
+        border-image-source: url(/ui-slot-ocupado.png);
+      }
+      .lobby .roster-card.is-editing,
+      .lobby .roster-card.is-editing:hover {
+        border-image-source: url(/ui-slot-selecionado.png);
+      }
+      .lobby .roster-card.is-target {
+        border-image-source: url(/ui-slot-hover.png);
+      }
+      .lobby .roster-card.is-taken:not(.is-editing) .roster-preview {
+        opacity: 0.45;
       }
       .room-capacity[hidden] {
         display: none;
@@ -193,9 +241,6 @@
       .lobby button:not(.roster-card):focus-visible:not(:disabled) {
         outline: none;
         border-image-source: url(/ui-botao-foco.png);
-      }
-      .lobby .roster-card.is-bot .roster-label {
-        color: #ff5a4a;
       }
       .lobby .roster-card:focus-visible:not(:disabled) {
         border-image-source: url(/ui-slot-hover.png);

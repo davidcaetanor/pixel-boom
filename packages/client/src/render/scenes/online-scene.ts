@@ -6,6 +6,7 @@
  */
 import Phaser from "phaser";
 import {
+  BotDifficulty,
   KICKED_CODE,
   IDLE_INPUT,
   MatchPhase,
@@ -248,6 +249,9 @@ export class OnlineScene extends Phaser.Scene {
       onStart: () => this.room.send("start"),
       onCapacity: (value) => this.room.send("capacity", { value }),
       onKick: (id) => this.room.send("kick", { id }),
+      onAddBot: () => this.room.send("addBot", { difficulty: BotDifficulty.Normal }),
+      onBotDifficulty: (id) => this.room.send("botDifficulty", { id }),
+      onBotCharacter: (id, index) => this.room.send("botCharacter", { id, index }),
       onLeave: () => this.backToMenu(),
     });
     this.panel.render({
@@ -255,7 +259,7 @@ export class OnlineScene extends Phaser.Scene {
       localId: this.room.sessionId,
       hostId: lobby.hostId,
       capacity: lobby.capacity,
-      botDifficulty: lobby.botDifficulty,
+      closed: lobby.closed,
       members: lobby.members,
     });
   }

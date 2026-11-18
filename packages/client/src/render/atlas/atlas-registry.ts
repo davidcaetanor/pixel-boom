@@ -2,6 +2,8 @@
  * Registro unico dos nomes de textura. O sufixo "-provisorio" marca recortes
  * diretos da arte crua, a serem substituidos pelo atlas definitivo.
  */
+import { CAST } from "@pixelboom/shared";
+
 export const TEXTURA = {
   pisoClaro: "piso-claro",
   pisoEscuro: "piso-escuro",
@@ -82,16 +84,7 @@ export const DIRECOES_FOLHA = ["south", "west", "east", "north"] as const;
 export type DirecaoFolha = (typeof DIRECOES_FOLHA)[number];
 
 /** Elenco na ordem dos indices de personagem. */
-export const ELENCO = [
-  "bender",
-  "cogu",
-  "gamabunta",
-  "golem",
-  "karasuno",
-  "octus",
-  "papyrus",
-  "tommy",
-] as const;
+export const ELENCO = CAST;
 
 export function chaveDoPersonagem(character: number): string {
   return `personagem-${ELENCO[character % ELENCO.length] ?? ELENCO[0]}`;
