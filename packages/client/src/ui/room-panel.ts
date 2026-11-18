@@ -1,14 +1,18 @@
 /**
- * Sala de espera sobreposta ao canvas: codigo e convite, escolha de personagem
- * e o botao de iniciar, ativo so para o anfitriao. Nao conhece rede nem Phaser.
+ * Sala de espera sobreposta ao canvas: codigo e convite, escolha de personagem,
+ * o botao de iniciar, ativo so para o anfitriao, e a volta ao menu. Navega por
+ * teclado como o menu: setas movem o foco e Esc volta ao menu. Nao conhece rede
+ * nem Phaser.
  */
 import { BALANCE, CHARACTER_COUNT, displayName } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
+import { moveFocus } from "./keyboard-nav.js";
 
 export interface RoomPanelActions {
   onPick(character: number): void;
   onStart(): void;
+  onLeave(): void;
 }
 
 export interface RoomPanelView {
@@ -22,6 +26,8 @@ export interface RoomPanelView {
 /** Miniatura em escala de arte; o zoom do painel amplia junto com o resto. */
 const PREVIEW_SCALE = 1;
 const COPIED_FEEDBACK_MS = 1500;
+/** Colunas da grade de personagens, iguais as do CSS de .roster. */
+const ROSTER_COLUMNS = 4;
 /** Espessura do contorno na cor do slot que marca o dono do personagem. */
 const OWNER_OUTLINE = 1;
 const OWNER_OUTLINE_MINE = 2;
@@ -33,6 +39,7 @@ export class RoomPanel {
   private readonly copy: HTMLButtonElement;
   private readonly cards: HTMLButtonElement[] = [];
   private inviteUrl = "";
+  private focused = false;
 
   constructor(actions: RoomPanelActions, host: HTMLElement = document.body) {
     this.root = document.createElement("div");
@@ -81,10 +88,23 @@ export class RoomPanel {
     this.start.className = "room-start";
     this.start.addEventListener("click", () => actions.onStart());
 
+    const leave = document.createElement("button");
+    leave.type = "button";
+    leave.textContent = "Voltar ao menu";
+    leave.addEventListener("click", () => actions.onLeave());
+
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(title, this.copy, grid, this.status, this.start);
+    box.append(title, this.copy, grid, this.status, this.start, leave);
     this.root.append(box);
+    this.root.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        actions.onLeave();
+        return;
+      }
+      moveFocus(event, [this.copy, ...this.cards, this.start, leave], { items: this.cards, columns: ROSTER_COLUMNS });
+    });
     host.append(this.root);
   }
 
@@ -115,6 +135,11 @@ export class RoomPanel {
         }
       }
     });
+
+    if (!this.focused) {
+      this.focused = true;
+      this.cards.find((card) => card.classList.contains("is-mine"))?.focus();
+    }
 
     const isHost = view.localId === view.hostId;
     const count = view.members.length;

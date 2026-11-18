@@ -158,9 +158,12 @@
         color: #ff5a4a;
       }
       /* Foco de teclado: o mesmo destaque do mouse nao diz onde o Enter vai cair. */
-      .lobby button:focus-visible:not(:disabled) {
+      .lobby button:not(.roster-card):focus-visible:not(:disabled) {
         outline: none;
         border-image-source: url(/ui-botao-foco.png);
+      }
+      .lobby .roster-card:focus-visible:not(:disabled) {
+        border-image-source: url(/ui-slot-hover.png);
       }
       .lobby input:focus-visible {
         border-image-source: url(/ui-slot-selecionado.png);
