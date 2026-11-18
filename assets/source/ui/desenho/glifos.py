@@ -187,6 +187,7 @@ FONTE_HUD = {
     "!": ["..#..", "..#..", "..#..", "..#..", "..#..", ".....", "..#.."],
     "?": [".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#.."],
     "-": [".....", ".....", ".....", ".###.", ".....", ".....", "....."],
+    "+": [".....", "..#..", "..#..", "#####", "..#..", "..#..", "....."],
     "*": [".....", "#.#.#", ".###.", "#####", ".###.", "#.#.#", "....."],
     "●": [".....", ".###.", "#####", "#####", "#####", ".###.", "....."],
     "○": [".....", ".###.", "#...#", "#...#", "#...#", ".###.", "....."],
@@ -237,6 +238,33 @@ def estrela(cheia):
     return img
 
 
+# Barra do impulso de velocidade: moldura e preenchimento em pecas separadas,
+# para o codigo esvaziar o preenchimento cortando-o da direita para a esquerda.
+BARRA_LARGURA, BARRA_ALTURA = 24, 5
+CIANO = (64, 200, 230, 255)
+CIANO_LUZ = (200, 240, 250, 255)
+
+
+def barra_moldura():
+    img = Image.new("RGBA", (BARRA_LARGURA, BARRA_ALTURA))
+    px = img.load()
+    for y in range(BARRA_ALTURA):
+        for x in range(BARRA_LARGURA):
+            borda = x in (0, BARRA_LARGURA - 1) or y in (0, BARRA_ALTURA - 1)
+            px[x, y] = ESCURO if borda else VAZIO
+    return img
+
+
+def barra_preenchimento():
+    w, h = BARRA_LARGURA - 2, BARRA_ALTURA - 2
+    img = Image.new("RGBA", (w, h))
+    px = img.load()
+    for y in range(h):
+        for x in range(w):
+            px[x, y] = CIANO_LUZ if y == 0 else CIANO
+    return img
+
+
 if __name__ == "__main__":
     for pasta in sys.argv[1:3]:
         logo().save(os.path.join(pasta, "ui-logo.png"))
@@ -244,5 +272,7 @@ if __name__ == "__main__":
         fonte_hud().save(os.path.join(pasta, "ui-fonte.png"))
         estrela(True).save(os.path.join(pasta, "ui-vitoria.png"))
         estrela(False).save(os.path.join(pasta, "ui-vitoria-vazia.png"))
+        barra_moldura().save(os.path.join(pasta, "ui-barra-moldura.png"))
+        barra_preenchimento().save(os.path.join(pasta, "ui-barra-preenchimento.png"))
     print("logo", logo().size, "digito", DIGITO_QUADRO, "fonte", FONTE_QUADRO)
     print("FONTE_CHARS", FONTE_CHARS.encode("unicode_escape").decode())

@@ -8,7 +8,7 @@ import { TEXTURA } from "../atlas/atlas-registry.js";
 
 export const FONTE_HUD = "hud";
 /** Ordem dos glifos na folha, igual a FONTE_CHARS do script de desenho. */
-const FONTE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ:/.!?-*●○ 0123456789";
+const FONTE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ:/.!?-+*●○ 0123456789";
 const QUADRO_LARGURA = 7;
 const QUADRO_ALTURA = 9;
 /** Os contornos de glifos vizinhos se sobrepoem em 1 px. */
