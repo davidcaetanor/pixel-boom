@@ -41,6 +41,7 @@ export class MemberSchema extends Schema {
   /** Ordem de entrada na sala; define o proximo anfitriao. */
   @type("uint16") order = 0;
   @type("string") nickname = "";
+  @type("boolean") bot = false;
 }
 
 /** Fase de transporte: sala aguardando jogadores. */
@@ -54,6 +55,8 @@ export class MatchSchema extends Schema {
   @type("string") winnerId = "";
   @type("uint8") connected = 0;
   @type("string") hostId = "";
+  /** Dificuldade do bot da sala; vazio em sala so de humanos. */
+  @type("string") botDifficulty = "";
   @type({ map: MemberSchema }) members = new MapSchema<MemberSchema>();
   /** Rodada atual da serie, a partir de 1. */
   @type("uint8") round = 0;

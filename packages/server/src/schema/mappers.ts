@@ -82,6 +82,7 @@ export interface LobbyMember {
   readonly character: number;
   readonly order: number;
   readonly nickname: string;
+  readonly bot: boolean;
 }
 
 export function writeLobby(
@@ -102,6 +103,7 @@ export function writeLobby(
     s.character = member.character;
     s.order = member.order;
     s.nickname = member.nickname;
+    s.bot = member.bot;
     if (!target.members.has(id)) {
       target.members.set(id, s);
     }
