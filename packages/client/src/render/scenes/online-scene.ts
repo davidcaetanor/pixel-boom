@@ -26,6 +26,8 @@ import { RoomPanel } from "../../ui/room-panel.js";
 import { forgetInvite } from "./lobby-scene.js";
 import { comemora, onlineBanner, roundLabel } from "../hud/messages.js";
 import { paraFonteHud, textoHud } from "../hud/pixel-text.js";
+import { AttributesHud } from "../hud/attributes.js";
+import { PickupText } from "../hud/pickup-text.js";
 import { Scoreboard } from "../hud/scoreboard.js";
 import { SelfMarker } from "../hud/self-marker.js";
 import { TimerHud } from "../hud/timer.js";
@@ -56,6 +58,8 @@ export class OnlineScene extends Phaser.Scene {
   private keyboard!: KeyboardSource;
   private timer!: TimerHud;
   private scoreboard!: Scoreboard;
+  private attributes!: AttributesHud;
+  private pickupText!: PickupText;
   private status!: Phaser.GameObjects.BitmapText;
   private readonly buffer = new SnapshotBuffer();
   private readonly loop: FixedLoopState = createFixedLoop();
@@ -88,6 +92,8 @@ export class OnlineScene extends Phaser.Scene {
     this.keyboard = new KeyboardSource();
     this.timer = new TimerHud(this);
     this.scoreboard = new Scoreboard(this);
+    this.attributes = new AttributesHud(this);
+    this.pickupText = new PickupText(this);
     this.status = textoHud(this, 8, 4, `SALA ${room.roomId}`).setDepth(200);
 
     const onState = (state: unknown): void => this.receive(state as RemoteState);
@@ -203,6 +209,11 @@ export class OnlineScene extends Phaser.Scene {
     this.timer.render(state, `SALA ${this.room.roomId}  ${roundLabel(series)}`, onlineBanner(state, series, localId, names));
     this.status.setText("");
     this.scoreboard.render(state.players, names);
+    const self = state.players.find((p) => p.id === localId);
+    this.attributes.render(self, this.timer.bordaDireitaTopo);
+    if (selfView !== undefined) {
+      this.pickupText.render(self, selfView.position.x, selfView.position.y);
+    }
   }
 
   private renderRoom(lobby: Lobby): void {

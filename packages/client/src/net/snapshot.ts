@@ -25,6 +25,7 @@ interface RemotePlayer {
   facing: string;
   alive: boolean;
   speed: number;
+  speedBoost: number;
   maxBombs: number;
   range: number;
   roundsWon: number;
@@ -51,6 +52,7 @@ export interface RemoteState {
   members: { forEach(cb: (m: RemoteMember) => void): void };
   round: number;
   seriesFinished: boolean;
+  duel: boolean;
   seriesWinnerId: string;
   cells: Iterable<number>;
   players: { forEach(cb: (p: RemotePlayer) => void): void };
@@ -62,6 +64,7 @@ export interface RemoteState {
 export interface SeriesView {
   readonly round: number;
   readonly finished: boolean;
+  readonly duel: boolean;
   readonly winnerId: string | null;
 }
 
@@ -144,6 +147,7 @@ export function readSnapshot(remote: RemoteState): Snapshot {
       facing: p.facing as Facing,
       alive: p.alive,
       speed: p.speed,
+      speedBoost: p.speedBoost,
       maxBombs: p.maxBombs,
       range: p.range,
       bombsPlaced: 0,
@@ -174,6 +178,8 @@ export function readSnapshot(remote: RemoteState): Snapshot {
     })),
     powerUps: [...remote.powerUps].map((p) => ({ kind: p.kind as PowerUpKind, x: p.x, y: p.y })),
     ringsClosed: 0,
+    duel: remote.duel,
+    cellsClosed: 0,
     winnerId: remote.winnerId === "" ? null : remote.winnerId,
     nextEntityId: 0,
     rng: 0,
@@ -181,6 +187,7 @@ export function readSnapshot(remote: RemoteState): Snapshot {
   const series: SeriesView = {
     round: remote.round,
     finished: remote.seriesFinished,
+    duel: remote.duel,
     winnerId: remote.seriesWinnerId === "" ? null : remote.seriesWinnerId,
   };
   return { kind: "match", lobby, state, series, acks };

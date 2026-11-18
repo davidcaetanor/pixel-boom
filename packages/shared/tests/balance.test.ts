@@ -19,7 +19,8 @@ describe("balanceamento", () => {
 
   it("nao deixa nenhum teto abaixo do valor inicial", () => {
     const p = BALANCE.player;
-    expect(p.speedMax).toBeGreaterThan(p.speedInitial);
+    expect(p.speedBoost).toBeGreaterThan(0);
+    expect(p.speedBoostSeconds).toBeGreaterThan(BALANCE.time.bombFuse);
     expect(p.bombsMax).toBeGreaterThan(p.bombsInitial);
     expect(p.rangeMax).toBeGreaterThan(p.rangeInitial);
   });

@@ -10,6 +10,7 @@ export class PlayerSchema extends Schema {
   @type("string") facing = "south";
   @type("boolean") alive = true;
   @type("float64") speed = 0;
+  @type("float32") speedBoost = 0;
   @type("uint8") maxBombs = 0;
   @type("uint8") range = 0;
   @type("uint8") roundsWon = 0;
@@ -63,6 +64,8 @@ export class MatchSchema extends Schema {
   @type("boolean") seriesFinished = false;
   /** Vazio enquanto a serie nao terminou ou se terminou empatada. */
   @type("string") seriesWinnerId = "";
+  /** Rodada atual e um duelo de desempate entre os lideres. */
+  @type("boolean") duel = false;
   @type(["uint8"]) cells = new ArraySchema<number>();
   @type({ map: PlayerSchema }) players = new MapSchema<PlayerSchema>();
   @type([BombSchema]) bombs = new ArraySchema<BombSchema>();

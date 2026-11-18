@@ -1,7 +1,7 @@
 /**
  * Posicao de uma placa no canto direito do topo, equidistante da placa do
  * relogio e da borda da tela. Recalcular quando a placa do relogio mudar de
- * largura (por exemplo, ao entrar a morte subita).
+ * largura (por exemplo, quando a arena comeca a fechar).
  */
 import { LOGICAL_WIDTH } from "@pixelboom/shared";
 

@@ -1,6 +1,7 @@
 /**
  * Serie de rodadas: vence quem chega a roundsToWin. Esgotado maxRounds, vence
- * quem tiver mais vitorias; empate no topo encerra sem vencedor.
+ * quem tiver mais vitorias; empate no topo leva os lideres a um duelo de morte
+ * subita, repetido ate um deles vencer.
  */
 import { BALANCE } from "../config/balance.js";
 import type { MatchState } from "../domain/match-state.js";
@@ -11,34 +12,59 @@ export interface Series {
   readonly wins: Readonly<Record<string, number>>;
   readonly finished: boolean;
   readonly winnerId: string | null;
+  /** Lideres empatados disputando o duelo; vazio fora dele. */
+  readonly duel: readonly string[];
 }
 
-export const NEW_SERIES: Series = { roundsPlayed: 0, wins: {}, finished: false, winnerId: null };
+export const NEW_SERIES: Series = { roundsPlayed: 0, wins: {}, finished: false, winnerId: null, duel: [] };
 
-function leader(wins: Readonly<Record<string, number>>): string | null {
-  const ranked = Object.entries(wins).sort((a, b) => b[1] - a[1]);
-  const [first, second] = ranked;
-  if (first === undefined || (second !== undefined && second[1] === first[1])) {
-    return null;
-  }
-  return first[0];
+/** Quem tem mais vitorias; sem nenhuma vitoria, todos os participantes. */
+function leaders(wins: Readonly<Record<string, number>>, participants: readonly string[]): string[] {
+  const top = Math.max(0, ...Object.values(wins));
+  return top === 0 ? [...participants] : Object.keys(wins).filter((id) => wins[id] === top);
 }
 
-export function recordRound(series: Series, roundWinnerId: string | null): Series {
+function finish(series: Series, winnerId: string | null): Series {
+  return { ...series, finished: true, winnerId, duel: [] };
+}
+
+/** `participants` sao os jogadores da rodada, usados quando ninguem venceu nenhuma. */
+export function recordRound(series: Series, roundWinnerId: string | null, participants: readonly string[] = []): Series {
   const wins = { ...series.wins };
   if (roundWinnerId !== null) {
     wins[roundWinnerId] = (wins[roundWinnerId] ?? 0) + 1;
   }
-  const roundsPlayed = series.roundsPlayed + 1;
+  const next: Series = { ...series, roundsPlayed: series.roundsPlayed + 1, wins };
+
+  if (series.duel.length > 0) {
+    return roundWinnerId !== null && series.duel.includes(roundWinnerId) ? finish(next, roundWinnerId) : next;
+  }
+
   const { roundsToWin, maxRounds } = BALANCE.match;
   const champion = Object.entries(wins).find(([, n]) => n >= roundsToWin)?.[0] ?? null;
-  const exhausted = roundsPlayed >= maxRounds;
-  return {
-    roundsPlayed,
-    wins,
-    finished: champion !== null || exhausted,
-    winnerId: champion ?? (exhausted ? leader(wins) : null),
-  };
+  if (champion !== null) {
+    return finish(next, champion);
+  }
+  if (next.roundsPlayed < maxRounds) {
+    return next;
+  }
+  const tied = leaders(wins, participants);
+  if (tied.length <= 1) {
+    return finish(next, tied[0] ?? null);
+  }
+  return { ...next, duel: tied };
+}
+
+/** Duelista que saiu da sala perde a vaga; sobrando um, ele leva a serie. */
+export function keepPresentDuelists(series: Series, present: readonly string[]): Series {
+  if (series.duel.length === 0) {
+    return series;
+  }
+  const duel = series.duel.filter((id) => present.includes(id));
+  if (duel.length === series.duel.length) {
+    return series;
+  }
+  return duel.length <= 1 ? finish(series, duel[0] ?? null) : { ...series, duel };
 }
 
 /** Copia o placar da serie para os jogadores da rodada. */

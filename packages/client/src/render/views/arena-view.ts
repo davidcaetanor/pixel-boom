@@ -1,7 +1,7 @@
 /**
  * Desenha a grade: borda como cerca-viva, demais paredes como pilar, caixas e o
  * marcador de spawn de cada jogador, visivel so na contagem. A cada quadro
- * remove caixas destruidas e desenha paredes novas da morte subita.
+ * remove caixas destruidas e desenha paredes novas da arena fechando.
  */
 import type Phaser from "phaser";
 import {

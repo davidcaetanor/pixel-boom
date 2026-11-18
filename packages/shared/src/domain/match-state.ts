@@ -10,7 +10,7 @@ export const MatchPhase = {
   Countdown: "countdown",
   /** Rodada em andamento. */
   Playing: "playing",
-  /** Espiral fechando. */
+  /** Arena fechando. */
   SuddenDeath: "suddenDeath",
   /** Rodada encerrada: ultimo vivo venceu, ou empate. */
   Finished: "finished",
@@ -30,8 +30,12 @@ export interface MatchState {
   bombs: Bomb[];
   explosions: Explosion[];
   powerUps: PowerUp[];
-  /** Quantos aneis a morte subita ja fechou. */
+  /** Quantos aneis da arena ja fecharam. */
   ringsClosed: number;
+  /** Duelo de desempate: arena ja fechada alem da faixa central e sem caixas. */
+  duel: boolean;
+  /** Celulas da espiral do duelo ja fechadas. */
+  cellsClosed: number;
   /** Vencedor da rodada quando phase = Finished; null em empate ou em andamento. */
   winnerId: string | null;
   /** Proximo id livre para bomba e explosao. */

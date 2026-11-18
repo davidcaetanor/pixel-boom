@@ -18,11 +18,13 @@ import { detonate } from "../rules/chain-reaction.js";
 import { applyDamage, flameCells } from "../rules/damage.js";
 import { generateMap } from "../rules/map-generation.js";
 import { burnPowerUps, collectPowerUps, rollDrops } from "../rules/pickup.js";
-import { closeRings } from "../rules/sudden-death.js";
+import { closeRings, closeSpiral, ringScheduleOf } from "../rules/sudden-death.js";
+import { tickSpeedBoost } from "../rules/speed-boost.js";
 import { checkVictory } from "../rules/victory.js";
 import { movePlayer } from "../rules/movement.js";
 import { assignSpawns } from "../rules/spawn-assignment.js";
-import { seedRng } from "./rng.js";
+import { duelGrid, duelSpawns } from "../rules/duel-arena.js";
+import { seedRng, shuffle } from "./rng.js";
 
 /** Jogador no centro do spawn indicado. O slot define cor e posicao no placar. */
 export function createPlayer(id: string, slot: number, spawnIndex = slot): Player {
@@ -38,6 +40,7 @@ export function createPlayer(id: string, slot: number, spawnIndex = slot): Playe
     y: spawn.y + CELL_CENTER,
     facing: Facing.South,
     speed: p.speedInitial,
+    speedBoost: 0,
     maxBombs: p.bombsInitial,
     range: p.rangeInitial,
     bombsPlaced: 0,
@@ -46,25 +49,45 @@ export function createPlayer(id: string, slot: number, spawnIndex = slot): Playe
   };
 }
 
+export interface MatchOptions {
+  /** Duelo de desempate: arena ja fechada ate um anel alem da faixa final, sem caixas. */
+  readonly duel?: boolean;
+  /** Vaga de cada jogador, para manter a cor da serie; padrao e a posicao na lista. */
+  readonly slots?: readonly number[];
+}
+
 export function createMatchState(
   seed: number,
   playerIds: readonly string[],
+  options: MatchOptions = {},
 ): MatchState {
   const map = generateMap(seedRng(seed));
   const spawns = assignSpawns(playerIds.length, map.rng);
+  const slotOf = (i: number): number => options.slots?.[i] ?? i;
+  const duel = options.duel === true;
+  const grid = duel ? duelGrid(map.grid, BALANCE.duel.closedRings) : map.grid;
+  // Sorteados: a espiral comeca num canto e quem nascesse nele perderia sempre.
+  const [duelPoints, rng] = duel ? shuffle(duelSpawns(grid, playerIds.length, BALANCE.duel.closedRings + 1), spawns.rng) : [[], spawns.rng];
+  const players = playerIds.map((id, i) => {
+    const player = createPlayer(id, slotOf(i), spawns.spawnIndices[i] ?? i);
+    const point = duelPoints[i];
+    return point === undefined ? player : { ...player, x: point.x + CELL_CENTER, y: point.y + CELL_CENTER };
+  });
   return {
     tick: 0,
     elapsed: -BALANCE.time.countdown,
     phase: MatchPhase.Countdown,
-    grid: map.grid,
-    players: playerIds.map((id, slot) => createPlayer(id, slot, spawns.spawnIndices[slot] ?? slot)),
+    grid,
+    players,
     bombs: [],
     explosions: [],
     powerUps: [],
-    ringsClosed: 0,
+    ringsClosed: duel ? BALANCE.duel.closedRings : 0,
+    duel,
+    cellsClosed: 0,
     winnerId: null,
     nextEntityId: 1,
-    rng: spawns.rng,
+    rng,
   };
 }
 
@@ -74,6 +97,11 @@ interface TickContext {
 }
 
 type Stage = (state: MatchState, ctx: TickContext) => MatchState;
+
+const expireBoosts: Stage = (state, { dt }) => ({
+  ...state,
+  players: state.players.map((player) => tickSpeedBoost(player, dt)),
+});
 
 const movePlayers: Stage = (state, { inputs, dt }) => ({
   ...state,
@@ -155,7 +183,7 @@ const applyFlameDamage: Stage = (state) => ({
 const collectItems: Stage = (state) => ({ ...state, ...collectPowerUps(state.players, state.powerUps) });
 
 const closeSuddenDeathRings: Stage = (state) => {
-  const closed = closeRings(state, state.elapsed);
+  const closed = state.duel ? closeSpiral(state, state.elapsed) : closeRings(state, state.elapsed, ringScheduleOf(state));
   return {
     ...state,
     ...closed,
@@ -173,6 +201,7 @@ const resolveVictory: Stage = (state) => {
 };
 
 const WORLD_STAGES: readonly Stage[] = [
+  expireBoosts,
   movePlayers,
   placeBombs,
   burnFuses,

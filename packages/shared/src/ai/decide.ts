@@ -8,7 +8,7 @@ import type { Player } from "../domain/player.js";
 import { bombAt, canPlaceBomb, createBomb, playerCell } from "../rules/bomb-placement.js";
 import { propagate } from "../rules/explosion-propagation.js";
 import { nextFloat, seedRng, type RngState } from "../simulation/rng.js";
-import { dangerMap, isSafeSpot, type DangerMap } from "./danger.js";
+import { SAFE_HORIZON, dangerMap, isSafeSpot, type DangerMap } from "./danger.js";
 import { firstStep, reach, type Reach } from "./reach.js";
 
 export const BotDifficulty = {
@@ -27,11 +27,13 @@ export interface BotMemory {
   readonly target: number | null;
   /** Segundos restantes de compromisso com o alvo. */
   readonly hold: number;
+  /** Segundos ate a proxima decisao de alvo e de bomba. */
+  readonly think: number;
   readonly rng: RngState;
 }
 
 export function createBotMemory(seed: number): BotMemory {
-  return { target: null, hold: 0, rng: seedRng(seed) };
+  return { target: null, hold: 0, think: 0, rng: seedRng(seed) };
 }
 
 export interface BotDecision {
@@ -63,8 +65,13 @@ function noticedBombs(state: MatchState, me: Player, reactionTime: number): Bomb
   );
 }
 
+/** Impulso que acaba antes do horizonte nao entra na conta da fuga. */
+function planningSpeed(player: Player): number {
+  return player.speedBoost > SAFE_HORIZON ? player.speed : BALANCE.player.speedInitial;
+}
+
 function pathsFrom(state: MatchState, bombs: readonly Bomb[], danger: DangerMap, player: Player): Reach {
-  return reach({ grid: state.grid, bombs, danger, origin: cellOf(player), speed: player.speed, margin: MARGIN });
+  return reach({ grid: state.grid, bombs, danger, origin: cellOf(player), speed: planningSpeed(player), margin: MARGIN });
 }
 
 /** Celula segura mais proxima; sem nenhuma, a que demora mais a pegar fogo. */
@@ -198,6 +205,29 @@ function hold(memory: BotMemory, target: number, dt: number): number {
   return target === memory.target ? Math.max(memory.hold - dt, 0) : BALANCE.ai.targetHoldTime;
 }
 
+interface DifficultyParams {
+  readonly reactionTime: number;
+  readonly attackChance: number;
+  readonly pokeChance: number;
+  readonly enemyPull: number;
+  readonly pressure: number;
+  readonly thinkSeconds: number;
+}
+
+/** Arena fechando ou duelo: esperar nao adianta, o bot parte para cima. */
+function pressured(params: DifficultyParams, closing: boolean): DifficultyParams {
+  if (!closing) {
+    return params;
+  }
+  const k = params.pressure;
+  return {
+    ...params,
+    attackChance: Math.min(params.attackChance * k, 1),
+    pokeChance: Math.min(params.pokeChance * k, 1),
+    enemyPull: params.enemyPull * k,
+  };
+}
+
 export function decideBot(
   state: MatchState,
   botId: string,
@@ -211,7 +241,7 @@ export function decideBot(
     return { input: IDLE_INPUT, memory: { ...memory, target: null, hold: 0 } };
   }
 
-  const params = BALANCE.ai.difficulty[difficulty];
+  const params = pressured(BALANCE.ai.difficulty[difficulty], state.phase === MatchPhase.SuddenDeath);
   const bombs = noticedBombs(state, me, params.reactionTime);
   const danger = dangerMap(state, bombs);
   const view: View = {
@@ -230,22 +260,35 @@ export function decideBot(
     return { input: steer(view, target, dt), memory: { ...memory, target, hold: hold(memory, target, dt) } };
   }
 
+  // Entre uma decisao e outra o bot so segue o plano: chega atrasado nas oportunidades.
+  if (memory.think > 0) {
+    const target = stillSafe(view, memory.target) ? memory.target : chooseTarget(view, memory.target, params.enemyPull);
+    return {
+      input: steer(view, target, dt),
+      memory: { ...memory, target, hold: hold(memory, target, dt), think: Math.max(memory.think - dt, 0) },
+    };
+  }
+  const window = Math.max(dt, params.thinkSeconds);
+
   let rng = memory.rng;
   const plan = planBomb(view);
   if (plan !== null) {
-    const [trap, afterTrap] = roll(rng, params.attackChance, dt);
-    const [poke, afterPoke] = roll(afterTrap, params.pokeChance, dt);
+    const [trap, afterTrap] = roll(rng, params.attackChance, window);
+    const [poke, afterPoke] = roll(afterTrap, params.pokeChance, window);
     rng = afterPoke;
     const crateSpot = plan.crates > 0 && memory.target === view.cell;
     if (crateSpot || (plan.trapsEnemy && trap) || (plan.hitsEnemy && poke)) {
       // O step move antes de soltar a bomba; parado, ela cai na celula avaliada.
       return {
         input: { ...IDLE_INPUT, bomb: true },
-        memory: { target: plan.escape, hold: BALANCE.ai.targetHoldTime, rng },
+        memory: { target: plan.escape, hold: BALANCE.ai.targetHoldTime, think: params.thinkSeconds, rng },
       };
     }
   }
 
   const target = memory.hold > 0 && stillSafe(view, memory.target) ? memory.target : chooseTarget(view, memory.target, params.enemyPull);
-  return { input: steer(view, target, dt), memory: { target, hold: hold(memory, target, dt), rng } };
+  return {
+    input: steer(view, target, dt),
+    memory: { target, hold: hold(memory, target, dt), think: params.thinkSeconds, rng },
+  };
 }

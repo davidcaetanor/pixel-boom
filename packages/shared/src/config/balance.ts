@@ -3,8 +3,9 @@ export const BALANCE = {
   /** Progressao do jogador. Velocidade em celulas por segundo. */
   player: {
     speedInitial: 3.5,
-    speedStep: 0.4,
-    speedMax: 6,
+    /** Impulso de velocidade: soma fixa por um tempo; pegar outro so reinicia o tempo. */
+    speedBoost: 1,
+    speedBoostSeconds: 12,
 
     bombsInitial: 1,
     bombsStep: 1,
@@ -31,6 +32,8 @@ export const BALANCE = {
     countdown: 3,
     suddenDeathStart: 90,
     suddenDeathRingInterval: 15,
+    /** Aneis internos que nunca fecham: a briga final acontece neles. */
+    suddenDeathOpenRings: 2,
     matchMax: 180,
     /** Pausa entre o fim de uma rodada online e o inicio da proxima. */
     roundRestartDelay: 5,
@@ -43,6 +46,8 @@ export const BALANCE = {
     crateDensityMin: 0.55,
     crateDensityMax: 0.65,
     powerUpChance: 0.3,
+    /** Peso de cada tipo no sorteio do item, na ordem de POWER_UP_KINDS. */
+    powerUpWeights: [40, 35, 25],
   },
 
   /** Cadencia da simulacao de passo fixo. */
@@ -81,21 +86,37 @@ export const BALANCE = {
     difficulty: {
       normal: {
         /** Bomba inimiga mais nova que isto ainda nao foi notada. */
-        reactionTime: 0.6,
+        reactionTime: 0.9,
         /** Chance por segundo de soltar bomba quando ela prende o adversario. */
-        attackChance: 0.12,
+        attackChance: 0.05,
         /** Chance por segundo de soltar bomba com o adversario so na linha da explosao. */
-        pokeChance: 0.04,
+        pokeChance: 0.02,
         /** Desconto por celula de distancia ate o adversario mais proximo. */
-        enemyPull: 0.2,
+        enemyPull: 0.15,
+        /** Com a arena fechando, chances e atracao multiplicadas por isto; chance limitada a 1 por segundo. */
+        pressure: 1.5,
+        /** Intervalo entre decisoes de alvo e de bomba; fugir de perigo continua imediato. */
+        thinkSeconds: 0.35,
       },
       hard: {
         reactionTime: 0.12,
         attackChance: 0.9,
         pokeChance: 0.8,
         enemyPull: 0.5,
+        pressure: 3,
+        thinkSeconds: 0,
       },
     },
+  },
+
+  /** Duelo de desempate da serie, so entre os lideres empatados. */
+  duel: {
+    /** Aneis ja fechados no inicio: um a mais aberto que o fechamento final. */
+    closedRings: 3,
+    /** Segundos de duelo ate a parede comecar a avancar em espiral. */
+    spiralStart: 20,
+    /** Uma celula vira parede a cada intervalo: ninguem e esmagado junto, salvo na mesma celula. */
+    spiralCellSeconds: 0.5,
   },
 
   /** Formato da partida. */

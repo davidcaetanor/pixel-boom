@@ -1,21 +1,25 @@
-/** Previsao de chama por celula: bombas no chao com a cadeia, chamas acesas e aneis da morte subita. */
+/** Previsao de chama por celula: bombas no chao com a cadeia, chamas acesas e aneis da arena fechando. */
 import { CELL_COUNT, cellIndex } from "../config/arena.js";
 import { BALANCE } from "../config/balance.js";
 import { SUDDEN_DEATH_RINGS } from "../config/sudden-death-order.js";
 import type { Bomb } from "../domain/bomb.js";
 import type { MatchState } from "../domain/match-state.js";
 import { propagate } from "../rules/explosion-propagation.js";
+import { DUEL_SPIRAL, ringClosesAt, ringScheduleOf, spiralClosesAt } from "../rules/sudden-death.js";
 
 export interface DangerMap {
   /** Segundos ate a chama chegar; Infinity onde nao chega. */
   readonly start: Float64Array;
   /** Segundos ate a chama apagar. */
   readonly end: Float64Array;
-  /** Segundos ate o anel da celula virar parede; Infinity fora da morte subita. */
+  /** Segundos ate o anel da celula virar parede; Infinity onde nunca fecha. */
   readonly closes: Float64Array;
 }
 
-export type DangerSource = Pick<MatchState, "grid" | "bombs" | "explosions" | "elapsed" | "ringsClosed">;
+export type DangerSource = Pick<
+  MatchState,
+  "grid" | "bombs" | "explosions" | "elapsed" | "ringsClosed" | "duel" | "cellsClosed"
+>;
 
 function emptyDanger(): DangerMap {
   return {
@@ -74,11 +78,17 @@ export function dangerMap(state: DangerSource, bombs: readonly Bomb[] = state.bo
     }
   }
 
-  const { suddenDeathStart, suddenDeathRingInterval } = BALANCE.time;
+  const schedule = ringScheduleOf(state);
   for (let ring = state.ringsClosed; ring < SUDDEN_DEATH_RINGS.length; ring += 1) {
-    const closesIn = Math.max(suddenDeathStart + ring * suddenDeathRingInterval - state.elapsed, 0);
+    const closesIn = Math.max(ringClosesAt(ring, schedule) - state.elapsed, 0);
     for (const cell of SUDDEN_DEATH_RINGS[ring] ?? []) {
       danger.closes[cell] = closesIn;
+    }
+  }
+  if (state.duel) {
+    for (let i = state.cellsClosed; i < DUEL_SPIRAL.length; i += 1) {
+      const cell = DUEL_SPIRAL[i] as number;
+      danger.closes[cell] = Math.min(danger.closes[cell] ?? Infinity, Math.max(spiralClosesAt(i) - state.elapsed, 0));
     }
   }
   return danger;

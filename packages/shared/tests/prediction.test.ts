@@ -35,6 +35,24 @@ describe("predicao", () => {
     expect(predicted.facing).toBe(server.players[0]!.facing);
   });
 
+  it("preve o fim do impulso de velocidade no mesmo tick do servidor", () => {
+    const boosted = (s: ReturnType<typeof match>) => ({
+      ...s,
+      players: s.players.map((p, i) =>
+        i === 0 ? { ...p, speed: BALANCE.player.speedInitial + BALANCE.player.speedBoost, speedBoost: 5 * TICK_SECONDS } : p,
+      ),
+    });
+    const inputs = Array(12).fill(DOWN);
+    let server = boosted(match());
+    for (const input of inputs) {
+      server = step(server, { a: input }, TICK_SECONDS);
+    }
+    const start = boosted(match());
+    const predicted = replayInputs(start, start.players[0]!, inputs);
+    expect(predicted.y).toBeCloseTo(server.players[0]!.y, 10);
+    expect(predicted.speed).toBe(BALANCE.player.speedInitial);
+  });
+
   it("reconcilia: estado confirmado mais pendentes da o mesmo que tudo previsto", () => {
     const inputs = [...Array(20).fill(RIGHT), ...Array(10).fill(TURN)];
     const start = match();

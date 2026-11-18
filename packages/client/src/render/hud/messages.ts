@@ -8,6 +8,7 @@ const NO_NICKNAMES: Nicknames = new Map();
 export interface SeriesInfo {
   readonly round: number;
   readonly finished: boolean;
+  readonly duel: boolean;
   readonly winnerId: string | null;
 }
 
@@ -21,7 +22,7 @@ function nameOf(state: MatchState, id: string, names: Nicknames): string {
 }
 
 export function roundLabel(series: SeriesInfo): string {
-  return `RODADA ${series.round}/${BALANCE.match.maxRounds}`;
+  return series.duel ? "DUELO" : `RODADA ${series.round}/${BALANCE.match.maxRounds}`;
 }
 
 export function roundResult(state: MatchState, localId: string, names: Nicknames = NO_NICKNAMES): string {
@@ -48,11 +49,7 @@ export function onlineBanner(
   if (state.phase === MatchPhase.Finished) {
     return series.finished ? seriesResult(state, series, localId, names) : roundResult(state, localId, names);
   }
-  const self = state.players.find((p) => p.id === localId);
-  if (self === undefined) {
-    return "Assistindo\nvoce entra na proxima rodada";
-  }
-  return self.alive ? null : "Eliminado\nassistindo";
+  return null;
 }
 
 /** O jogador venceu a rodada que acabou de terminar e deve comemorar. */

@@ -1,16 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { playingMatch } from "./helpers.js";
 import { BALANCE, TICK_SECONDS } from "../src/config/balance.js";
-import { cellIndex } from "../src/config/arena.js";
+import { ARENA_COLS, cellIndex } from "../src/config/arena.js";
 import { SUDDEN_DEATH_RINGS } from "../src/config/sudden-death-order.js";
 import { CellKind } from "../src/domain/cell.js";
 import { cellAt, setCell } from "../src/domain/grid.js";
 import { MatchPhase, type MatchState } from "../src/domain/match-state.js";
-import { PowerUpKind } from "../src/domain/powerup.js";
+import { POWER_UP_KINDS, PowerUpKind } from "../src/domain/powerup.js";
 import type { InputsByPlayer } from "../src/commands/input-command.js";
 import { createStaticGrid } from "../src/rules/map-generation.js";
-import { applyPowerUp, rollDrops } from "../src/rules/pickup.js";
-import { ringsDue } from "../src/rules/sudden-death.js";
+import { applyPowerUp, rollDrops, weightedKind } from "../src/rules/pickup.js";
+import { duelSpawns } from "../src/rules/duel-arena.js";
+import {
+  CLOSABLE_RINGS,
+  DUEL_RINGS,
+  DUEL_SPIRAL,
+  ringClosesAt,
+  ringsDue,
+  spiralClosesAt,
+  spiralDue,
+} from "../src/rules/sudden-death.js";
+import { ARENA_LAYOUTS } from "../src/config/arena-layouts.js";
 import { checkVictory } from "../src/rules/victory.js";
 import { seedRng } from "../src/simulation/rng.js";
 import { createMatchState, createPlayer, step } from "../src/simulation/step.js";
@@ -62,7 +72,39 @@ describe("pickup", () => {
     }
     expect(p.maxBombs).toBe(BALANCE.player.bombsMax);
     expect(p.range).toBe(BALANCE.player.rangeMax);
-    expect(p.speed).toBe(BALANCE.player.speedMax);
+    expect(p.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+  });
+
+  it("sorteia o tipo pela fatia de cada peso", () => {
+    expect(weightedKind(0)).toBe(PowerUpKind.Bomb);
+    expect(weightedKind(0.39)).toBe(PowerUpKind.Bomb);
+    expect(weightedKind(0.4)).toBe(PowerUpKind.Range);
+    expect(weightedKind(0.74)).toBe(PowerUpKind.Range);
+    expect(weightedKind(0.75)).toBe(PowerUpKind.Speed);
+    expect(weightedKind(0.999)).toBe(PowerUpKind.Speed);
+    expect(BALANCE.mapGeneration.powerUpWeights).toHaveLength(POWER_UP_KINDS.length);
+  });
+
+  it("impulso de velocidade nao acumula e outro reinicia o tempo", () => {
+    let p = applyPowerUp(createPlayer("a", 0), PowerUpKind.Speed);
+    p = { ...p, speedBoost: 1 };
+    p = applyPowerUp(p, PowerUpKind.Speed);
+    expect(p.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+    expect(p.speedBoost).toBe(BALANCE.player.speedBoostSeconds);
+  });
+
+  it("impulso acaba no tempo e a velocidade volta a inicial", () => {
+    let s = arena({ a: [3, 1], b: [23, 11] });
+    s = { ...s, players: s.players.map((p) => (p.id === "a" ? applyPowerUp(p, PowerUpKind.Speed) : p)) };
+    const ticks = Math.round(BALANCE.player.speedBoostSeconds / TICK_SECONDS);
+    for (let i = 0; i < ticks - 1; i += 1) {
+      s = step(s, {}, TICK_SECONDS);
+    }
+    expect(s.players[0]?.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+    // A soma de dt em ponto flutuante pode passar um tick do tempo exato.
+    s = step(step(s, {}, TICK_SECONDS), {}, TICK_SECONDS);
+    expect(s.players[0]?.speed).toBe(BALANCE.player.speedInitial);
+    expect(s.players[0]?.speedBoost).toBe(0);
   });
 
   it("jogador pisa e coleta", () => {
@@ -105,20 +147,42 @@ describe("pickup", () => {
   });
 });
 
-describe("sudden-death", () => {
-  it("nenhum anel antes de 90 s, um por intervalo depois, ate o ultimo", () => {
+describe("arena fechando", () => {
+  it("nenhum anel antes de 90 s, um por intervalo depois, ate a faixa central", () => {
     const { suddenDeathStart: start, suddenDeathRingInterval: gap } = BALANCE.time;
     expect(ringsDue(start - 0.01)).toBe(0);
     expect(ringsDue(start)).toBe(1);
     expect(ringsDue(start + gap - 0.01)).toBe(1);
     expect(ringsDue(start + gap)).toBe(2);
-    expect(ringsDue(10_000)).toBe(SUDDEN_DEATH_RINGS.length);
+    expect(ringsDue(10_000)).toBe(SUDDEN_DEATH_RINGS.length - BALANCE.time.suddenDeathOpenRings);
   });
 
-  it("ultimo anel fecha antes do teto da partida", () => {
-    const { suddenDeathStart, suddenDeathRingInterval, matchMax } = BALANCE.time;
-    const last = suddenDeathStart + (SUDDEN_DEATH_RINGS.length - 1) * suddenDeathRingInterval;
-    expect(last).toBeLessThanOrEqual(matchMax);
+  it("ultimo anel que fecha deixa tempo de briga na faixa central antes do teto", () => {
+    const last = ringClosesAt(CLOSABLE_RINGS - 1);
+    expect(last).toBeLessThan(BALANCE.time.matchMax);
+    expect(ringClosesAt(CLOSABLE_RINGS)).toBe(Infinity);
+  });
+
+  it("faixa central fica conectada em todo layout", () => {
+    const open = SUDDEN_DEATH_RINGS.slice(CLOSABLE_RINGS).flat();
+    ARENA_LAYOUTS.forEach((_, layout) => {
+      const grid = createStaticGrid(layout);
+      const floor = new Set(open.filter((c) => grid.cells[c] === CellKind.Floor));
+      const start = [...floor][0];
+      const seen = new Set(start === undefined ? [] : [start]);
+      const queue = [...seen];
+      while (queue.length > 0) {
+        const c = queue.pop() as number;
+        for (const n of [c + 1, c - 1, c + ARENA_COLS, c - ARENA_COLS]) {
+          if (floor.has(n) && !seen.has(n)) {
+            seen.add(n);
+            queue.push(n);
+          }
+        }
+      }
+      expect(floor.size).toBeGreaterThanOrEqual(BALANCE.net.maxClientsPerRoom * 2);
+      expect(seen.size).toBe(floor.size);
+    });
   });
 
   it("anel vira parede, mata quem esta nele e muda a fase", () => {
@@ -220,5 +284,92 @@ describe("fases", () => {
     }
     expect(s.phase).toBe(MatchPhase.Finished);
     expect(s.elapsed).toBeLessThanOrEqual(BALANCE.time.matchMax + TICK_SECONDS);
+  });
+});
+
+describe("duelo de desempate", () => {
+  const duel = createMatchState(5, ["a", "b", "c"], { duel: true, slots: [2, 5, 7] });
+  const open = new Set(SUDDEN_DEATH_RINGS.slice(BALANCE.duel.closedRings).flat());
+
+  it("comeca com os aneis externos fechados e sem caixas no que sobra", () => {
+    expect(duel.duel).toBe(true);
+    expect(duel.ringsClosed).toBe(BALANCE.duel.closedRings);
+    for (const ring of SUDDEN_DEATH_RINGS.slice(0, BALANCE.duel.closedRings)) {
+      for (const cell of ring) {
+        expect(duel.grid.cells[cell]).toBe(CellKind.Wall);
+      }
+    }
+    for (const cell of open) {
+      expect(duel.grid.cells[cell]).not.toBe(CellKind.Crate);
+    }
+  });
+
+  it("deixa um anel a mais aberto que o fechamento final da rodada", () => {
+    expect(BALANCE.duel.closedRings).toBe(CLOSABLE_RINGS - 1);
+  });
+
+  it("espalha os jogadores em piso livre e mantem a vaga de cada um", () => {
+    const cells = duel.players.map((p) => cellIndex(Math.floor(p.x), Math.floor(p.y)));
+    expect(new Set(cells).size).toBe(3);
+    for (const cell of cells) {
+      expect(open.has(cell)).toBe(true);
+      expect(duel.grid.cells[cell]).toBe(CellKind.Floor);
+    }
+    expect(duel.players.map((p) => p.slot)).toEqual([2, 5, 7]);
+  });
+
+  it("no duelo os aneis nao fecham alem dos iniciais; quem fecha e a espiral", () => {
+    expect(ringsDue(10_000, DUEL_RINGS)).toBe(BALANCE.duel.closedRings);
+    expect(spiralDue(BALANCE.duel.spiralStart - 0.01)).toBe(0);
+    expect(spiralDue(BALANCE.duel.spiralStart)).toBe(1);
+    expect(spiralDue(BALANCE.duel.spiralStart + BALANCE.duel.spiralCellSeconds)).toBe(2);
+    expect(spiralDue(10_000)).toBe(DUEL_SPIRAL.length);
+  });
+
+  it("espiral cobre o que sobra do duelo uma vez, de fora para dentro, celula vizinha a celula", () => {
+    expect([...DUEL_SPIRAL].sort((a, b) => a - b)).toEqual([...open].sort((a, b) => a - b));
+    const outer = new Set(SUDDEN_DEATH_RINGS[BALANCE.duel.closedRings]);
+    expect(outer.has(DUEL_SPIRAL[0] as number)).toBe(true);
+    const ring = SUDDEN_DEATH_RINGS[BALANCE.duel.closedRings]?.length ?? 0;
+    for (let i = 1; i < ring; i += 1) {
+      const a = DUEL_SPIRAL[i - 1] as number;
+      const b = DUEL_SPIRAL[i] as number;
+      expect(Math.abs((a % ARENA_COLS) - (b % ARENA_COLS)) + Math.abs(Math.floor(a / ARENA_COLS) - Math.floor(b / ARENA_COLS))).toBe(1);
+    }
+  });
+
+  it("duelo sempre termina: a espiral fecha tudo antes do teto da partida", () => {
+    expect(spiralClosesAt(DUEL_SPIRAL.length - 1)).toBeLessThan(BALANCE.time.matchMax);
+    let s = createMatchState(3, ["a", "b"], { duel: true });
+    while (s.phase !== MatchPhase.Finished) {
+      s = step(s, {}, TICK_SECONDS);
+    }
+    expect(s.elapsed).toBeLessThan(spiralClosesAt(DUEL_SPIRAL.length - 1) + 1);
+  });
+
+  it("parados em celulas diferentes, a espiral esmaga um antes do outro", () => {
+    let s = createMatchState(3, ["a", "b"], { duel: true });
+    while (s.phase !== MatchPhase.Finished) {
+      s = step(s, {}, TICK_SECONDS);
+    }
+    expect(s.winnerId).not.toBeNull();
+  });
+
+  it("sorteia quem nasce em cada ponto, para o primeiro da sala nao nascer sempre onde a espiral comeca", () => {
+    const firsts = new Set<number>();
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const s = createMatchState(seed, ["a", "b"], { duel: true });
+      const p = s.players[0];
+      firsts.add(cellIndex(Math.floor(p?.x ?? 0), Math.floor(p?.y ?? 0)) === duelSpawns(s.grid, 2, BALANCE.duel.closedRings + 1).map((c) => cellIndex(c.x, c.y))[0] ? 1 : 0);
+    }
+    expect(firsts.size).toBe(2);
+  });
+
+  it("cabe a sala inteira no duelo em todo layout", () => {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const full = createMatchState(seed, ["a", "b", "c", "d", "e", "f", "g", "h"], { duel: true });
+      const cells = full.players.map((p) => cellIndex(Math.floor(p.x), Math.floor(p.y)));
+      expect(new Set(cells).size).toBe(8);
+    }
   });
 });
