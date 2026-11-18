@@ -8,7 +8,7 @@ import type { Player } from "../domain/player.js";
 import { bombAt, canPlaceBomb, createBomb, playerCell } from "../rules/bomb-placement.js";
 import { propagate } from "../rules/explosion-propagation.js";
 import { nextFloat, seedRng, type RngState } from "../simulation/rng.js";
-import { dangerMap, isSafeSpot, type DangerMap } from "./danger.js";
+import { SAFE_HORIZON, dangerMap, isSafeSpot, type DangerMap } from "./danger.js";
 import { firstStep, reach, type Reach } from "./reach.js";
 
 export const BotDifficulty = {
@@ -63,8 +63,13 @@ function noticedBombs(state: MatchState, me: Player, reactionTime: number): Bomb
   );
 }
 
+/** Impulso que acaba antes do horizonte nao entra na conta da fuga. */
+function planningSpeed(player: Player): number {
+  return player.speedBoost > SAFE_HORIZON ? player.speed : BALANCE.player.speedInitial;
+}
+
 function pathsFrom(state: MatchState, bombs: readonly Bomb[], danger: DangerMap, player: Player): Reach {
-  return reach({ grid: state.grid, bombs, danger, origin: cellOf(player), speed: player.speed, margin: MARGIN });
+  return reach({ grid: state.grid, bombs, danger, origin: cellOf(player), speed: planningSpeed(player), margin: MARGIN });
 }
 
 /** Celula segura mais proxima; sem nenhuma, a que demora mais a pegar fogo. */
