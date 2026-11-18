@@ -205,9 +205,12 @@
         text-align: center;
       }
       /* Largura fixa: trocar de tela no menu nao redimensiona o painel. */
-      .lobby.pause .ui-panel,
-      .lobby.room-settings .ui-panel {
+      .lobby.pause .ui-panel {
         width: 220px;
+      }
+      /* Cresce com a fonte do aparelho: sem Courier New o monoespaco e mais largo. */
+      .lobby.room-settings .ui-panel {
+        min-width: 220px;
       }
       .pause-screen {
         display: flex;
