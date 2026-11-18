@@ -69,8 +69,8 @@ function single(raw: unknown, key: string): unknown {
   return keys.length === 1 && keys[0] === key ? (raw as Record<string, unknown>)[key] : undefined;
 }
 
-/** Capacidade pedida pelo anfitriao: `{ value }` inteiro. A faixa e validada pela regra. */
-export function parseCapacity(raw: unknown): number | null {
+/** Valor inteiro pedido pelo anfitriao: `{ value }`. A faixa e validada pela regra. */
+export function parseValue(raw: unknown): number | null {
   const value = single(raw, "value");
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
@@ -81,10 +81,10 @@ export function parseKick(raw: unknown): string | null {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
-/** Bot pedido pelo anfitriao: `{ difficulty }`. */
-export function parseAddBot(raw: unknown): BotDifficulty | null {
-  const difficulty = single(raw, "difficulty");
-  return isBotDifficulty(difficulty) ? difficulty : null;
+/** Quantidade de bots pedida pelo anfitriao: `{ value }` inteiro nao negativo. */
+export function parseBotCount(raw: unknown): number | null {
+  const value = single(raw, "value");
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 }
 
 /** Troca de personagem de um bot: `{ id, index }`. O indice e validado pela regra. */

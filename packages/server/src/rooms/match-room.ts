@@ -12,13 +12,11 @@ import {
   BALANCE,
   InputQueue,
   MatchPhase,
-  NEW_SERIES,
   TICK_SECONDS,
   advance,
   applySeriesScore,
   BotDifficulty,
   botNickname,
-  canAddBot,
   canKick,
   canPickCharacter,
   canSetCapacity,
@@ -30,7 +28,9 @@ import {
   firstFreeCharacter,
   keepPresentDuelists,
   otherDifficulty,
+  isBestOf,
   isNicknameTaken,
+  newSeries,
   isRoomFull,
   KICKED_CODE,
   recordRound,
@@ -44,10 +44,10 @@ import {
 import { writeLobby, writeMatch, writeWaiting, type LobbyMember } from "../schema/mappers.js";
 import { MatchSchema } from "../schema/match-schema.js";
 import {
-  parseAddBot,
   parseBotCharacter,
+  parseBotCount,
   parseBotDifficulty,
-  parseCapacity,
+  parseValue,
   parseCharacterPick,
   parseInput,
   parseJoinNickname,
@@ -70,7 +70,8 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   override state = new MatchSchema();
 
   private match: MatchState | null = null;
-  private series: Series = NEW_SERIES;
+  private bestOf: number = BALANCE.match.bestOfDefault;
+  private series: Series = newSeries();
   private readonly queues = new Map<string, InputQueue>();
   private readonly members = new Map<string, LobbyMember>();
   private hostId = "";
@@ -105,13 +106,32 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
         this.publishLobby();
       }
     },
-    addBot: (client: Client, raw: unknown): void => {
-      const difficulty = parseAddBot(raw);
-      if (this.isHostInLobby(client) && difficulty !== null && canAddBot(this.members.size, this.capacity)) {
-        this.addBot(difficulty);
-        this.syncLock();
-        this.publishLobby();
+    bestOf: (client: Client, raw: unknown): void => {
+      const value = parseValue(raw);
+      if (this.isHostInLobby(client) && isBestOf(value)) {
+        this.bestOf = value;
+        this.series = newSeries(value);
+        this.state.bestOf = value;
       }
+    },
+    bots: (client: Client, raw: unknown): void => {
+      const target = parseBotCount(raw);
+      if (!this.isHostInLobby(client) || target === null) {
+        return;
+      }
+      const bots = [...this.members].filter(([, m]) => m.bot).sort((a, b) => b[1].order - a[1].order);
+      const humans = this.members.size - bots.length;
+      if (target > this.capacity - humans) {
+        return;
+      }
+      for (const [id] of bots.slice(0, Math.max(0, bots.length - target))) {
+        this.members.delete(id);
+      }
+      for (let n = bots.length; n < target; n += 1) {
+        this.addBot(BotDifficulty.Normal);
+      }
+      this.syncLock();
+      this.publishLobby();
     },
     botDifficulty: (client: Client, raw: unknown): void => {
       const id = parseKick(raw);
@@ -134,7 +154,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       }
     },
     capacity: (client: Client, raw: unknown): void => {
-      const value = parseCapacity(raw);
+      const value = parseValue(raw);
       if (!this.isHostInLobby(client)) {
         return;
       }
@@ -180,6 +200,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       this.soloBot = solo;
     }
     this.state.closed = this.closed;
+    this.state.bestOf = this.bestOf;
     this.state.capacity = this.capacity;
     this.setPatchRate(MS_PER_SECOND / BALANCE.net.patchesPerSecond);
     this.setSimulationInterval((deltaMs) => {
@@ -373,7 +394,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       return;
     }
     this.match = null;
-    this.series = NEW_SERIES;
+    this.series = newSeries(this.bestOf);
     writeWaiting(this.state);
   }
 
