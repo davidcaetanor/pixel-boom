@@ -17,8 +17,21 @@ const TINT_NORMAL = 0xffffff;
 /** Folga do texto ate a borda interna da placa do topo e do banner central. */
 const PLACA_PADDING_X = 20;
 const PLACA_TOPO_Y = 0;
-/** A placa ocupa a faixa de borda do topo, um tile de altura. */
-const PLACA_TOPO_ALTURA = 32;
+/** Altura das placas do topo: a faixa da borda mais 4 px de respiro. */
+export const PLACA_TOPO_ALTURA = 36;
+/**
+ * Miolo escuro da placa: da linha 8 ate `altura - 12` (as barras de cima e de
+ * baixo da moldura tem alturas diferentes). Conteudo centraliza nele, nao na
+ * altura total.
+ */
+const MIOLO_TOPO = 8;
+const MIOLO_RECUO_BASE = 12;
+export const CENTRO_MIOLO_TOPO = Math.round((MIOLO_TOPO + PLACA_TOPO_ALTURA - MIOLO_RECUO_BASE) / 2);
+/** Espaco entre os grupos da placa do topo (sala, rodada, aviso e relogio). */
+const ESPACO_GRUPOS = 16;
+/** Os grupos chegam separados por dois ou mais espacos. */
+const SEPARADOR_GRUPOS = /\s{2,}/;
+const MAX_GRUPOS = 4;
 const BANNER_PADDING_X = 20;
 const BANNER_PADDING_Y = 15;
 /** Escalas inteiras: aviso central e digitos da contagem em 2x. */
@@ -58,7 +71,7 @@ function esquerda(centro: number, largura: number): number {
 
 export class TimerHud {
   private readonly placaTopo: Phaser.GameObjects.NineSlice;
-  private readonly topo: Phaser.GameObjects.BitmapText;
+  private readonly grupos: Phaser.GameObjects.BitmapText[];
   private readonly banner: Phaser.GameObjects.NineSlice;
   private readonly centro: Phaser.GameObjects.BitmapText;
   private readonly contagem: Phaser.GameObjects.Image;
@@ -67,7 +80,7 @@ export class TimerHud {
 
   constructor(scene: Phaser.Scene) {
     this.placaTopo = placa(scene);
-    this.topo = textoHud(scene, 0, 0, "").setDepth(HUD_DEPTH);
+    this.grupos = Array.from({ length: MAX_GRUPOS }, () => textoHud(scene, 0, 0, "").setDepth(HUD_DEPTH));
     this.banner = placa(scene).setVisible(false);
     this.centro = textoHud(scene, 0, 0, "", ESCALA_AVISO).setDepth(HUD_DEPTH);
     this.contagem = scene.add
@@ -76,6 +89,11 @@ export class TimerHud {
       .setScale(ESCALA_CONTAGEM)
       .setDepth(HUD_DEPTH)
       .setVisible(false);
+  }
+
+  /** Borda direita da placa do topo, para outras placas se alinharem a ela. */
+  get bordaDireitaTopo(): number {
+    return this.placaTopo.x + this.placaTopo.width;
   }
 
   /** `banner` aparece no centro, exceto durante a contagem regressiva. */
@@ -101,21 +119,27 @@ export class TimerHud {
   private setTopo(texto: string, perigo: boolean): void {
     const tint = perigo ? TINT_PERIGO : TINT_NORMAL;
     this.placaTopo.setTint(tint);
-    this.topo.setTint(tint);
     const final = paraFonteHud(texto.trim());
+    const partes = final === "" ? [] : final.split(SEPARADOR_GRUPOS).slice(0, MAX_GRUPOS);
     // Placa sem texto vira um toco de madeira solto: so aparece com conteudo.
-    this.placaTopo.setVisible(final !== "");
-    this.topo.setVisible(final !== "");
+    this.placaTopo.setVisible(partes.length > 0);
+    this.grupos.forEach((g, i) => g.setTint(tint).setVisible(i < partes.length));
     if (final === this.textoTopo) {
       return;
     }
     this.textoTopo = final;
-    this.topo.setText(final);
-    const largura = this.topo.width + PLACA_PADDING_X * 2;
+    partes.forEach((parte, i) => this.grupos[i]?.setText(parte));
+    const usados = this.grupos.slice(0, partes.length);
+    const conteudo = usados.reduce((soma, g) => soma + g.width, 0) + ESPACO_GRUPOS * Math.max(0, usados.length - 1);
+    const largura = conteudo + PLACA_PADDING_X * 2;
     const altura = PLACA_TOPO_ALTURA;
     const x = esquerda(LOGICAL_WIDTH / 2, largura);
     this.placaTopo.setSize(largura, altura).setPosition(x, PLACA_TOPO_Y);
-    this.topo.setPosition(x + PLACA_PADDING_X, PLACA_TOPO_Y + Math.round((altura - this.topo.height) / 2));
+    let cursor = x + PLACA_PADDING_X;
+    for (const g of usados) {
+      g.setPosition(cursor, PLACA_TOPO_Y + CENTRO_MIOLO_TOPO - Math.floor(g.height / 2));
+      cursor += g.width + ESPACO_GRUPOS;
+    }
   }
 
   private setCentro(texto: string): void {

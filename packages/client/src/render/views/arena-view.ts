@@ -1,5 +1,5 @@
 /**
- * Desenha a grade: borda como arvore, demais paredes como pilar, caixas e o
+ * Desenha a grade: borda como cerca-viva, demais paredes como pilar, caixas e o
  * marcador de spawn de cada jogador, visivel so na contagem. A cada quadro
  * remove caixas destruidas e desenha paredes novas da morte subita.
  */
@@ -17,7 +17,11 @@ import {
   type MatchPhase as Phase,
   type Player,
 } from "@pixelboom/shared";
-import { TEXTURA } from "../atlas/atlas-registry.js";
+import { SEBE, TEXTURA } from "../atlas/atlas-registry.js";
+
+/** Passos que espalham os dois tiles da sebe sem formar faixas retas. */
+const SEBE_PASSO_X = 7;
+const SEBE_PASSO_Y = 3;
 import { corDoSlot } from "../palette.js";
 
 export class ArenaView {
@@ -36,9 +40,7 @@ export class ArenaView {
         // Xadrez de dois tons: cada celula da grade se le sozinha.
         this.coloca((x + y) % 2 === 0 ? TEXTURA.pisoClaro : TEXTURA.pisoEscuro, x, y);
         if (isBorder(x, y)) {
-          const canto =
-            (x === 0 || x === ARENA_COLS - 1) && (y === 0 || y === ARENA_ROWS - 1);
-          this.coloca(canto ? TEXTURA.arvorePequena : TEXTURA.arvore, x, y);
+          this.colocaSebe(x, y);
           this.paredes.add(cellIndex(x, y));
         }
       }
@@ -85,6 +87,26 @@ export class ArenaView {
         }
       }
     }
+  }
+
+  /** Alterna os dois tiles e ondula a beira que encosta na area jogavel. */
+  private colocaSebe(x: number, y: number): void {
+    const folha = SEBE.folhas[(x * SEBE_PASSO_X + y * SEBE_PASSO_Y) % SEBE.folhas.length] ?? SEBE.folhas[0];
+    const ultimaColuna = ARENA_COLS - 1;
+    const ultimaLinha = ARENA_ROWS - 1;
+    const meioX = x > 0 && x < ultimaColuna;
+    const meioY = y > 0 && y < ultimaLinha;
+    let quadro: number = SEBE.quadro.plano;
+    if (y === 0 && meioX) {
+      quadro = SEBE.quadro.baixo;
+    } else if (y === ultimaLinha && meioX) {
+      quadro = SEBE.quadro.cima;
+    } else if (x === 0 && meioY) {
+      quadro = SEBE.quadro.direita;
+    } else if (x === ultimaColuna && meioY) {
+      quadro = SEBE.quadro.esquerda;
+    }
+    this.scene.add.image(x * TILE_SIZE, y * TILE_SIZE, folha, quadro).setOrigin(0, 0);
   }
 
   private coloca(textura: string, x: number, y: number): Phaser.GameObjects.Image {

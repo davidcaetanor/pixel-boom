@@ -13,3 +13,13 @@ export function corDoSlot(slot: number): number {
 export function corCss(cor: number): string {
   return `#${cor.toString(16).padStart(6, "0")}`;
 }
+
+/**
+ * Tint do texto de coleta ("+1 BOMBA") por item, sobre a fonte creme do HUD.
+ * Bomba fica creme: preto nao se le sobre a grama.
+ */
+export const COR_COLETA = {
+  bomba: 0xffffff,
+  alcance: 0xff9228,
+  velocidade: 0x40c8e6,
+} as const;
