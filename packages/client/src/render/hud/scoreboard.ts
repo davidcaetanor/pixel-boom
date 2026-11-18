@@ -8,7 +8,7 @@ import { ARENA_ROWS, BALANCE, LOGICAL_WIDTH, TILE_SIZE, type Player } from "@pix
 import { TEXTURA } from "../atlas/atlas-registry.js";
 import { corDoSlot } from "../palette.js";
 import { textoHud } from "./pixel-text.js";
-import { playerName } from "./messages.js";
+import { playerName, type Nicknames } from "./messages.js";
 
 const HUD_DEPTH = 100;
 const SLOTS = BALANCE.net.maxClientsPerRoom;
@@ -46,7 +46,7 @@ export class Scoreboard {
     }
   }
 
-  render(players: readonly Player[], localId: string): void {
+  render(players: readonly Player[], localId: string, names: Nicknames): void {
     const bySlot = new Map(players.map((p) => [p.slot, p]));
     this.entries.forEach((entry, slot) => {
       const player = bySlot.get(slot);
@@ -60,7 +60,7 @@ export class Scoreboard {
         return;
       }
       // O proprio nome sai na cor do slot; asterisco ao lado das estrelas confundia.
-      entry.text.setText(playerName(player)).setTint(player.id === localId ? corDoSlot(slot) : COR_NOME);
+      entry.text.setText(playerName(player, names)).setTint(player.id === localId ? corDoSlot(slot) : COR_NOME);
       const alpha = player.alive ? 1 : ELIMINATED_ALPHA;
       entry.swatch.setAlpha(alpha);
       entry.text.setAlpha(alpha);

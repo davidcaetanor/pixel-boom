@@ -21,7 +21,7 @@ import { KeyboardSource } from "../../input/keyboard-source.js";
 import { SnapshotBuffer } from "../../net/interpolation.js";
 import { predictionFor, type LocalPrediction } from "../../net/prediction.js";
 import { activeRoom } from "../../net/room-client.js";
-import { readSnapshot, type Lobby, type MatchSnapshot, type RemoteState } from "../../net/snapshot.js";
+import { nicknamesOf, readSnapshot, type Lobby, type MatchSnapshot, type RemoteState } from "../../net/snapshot.js";
 import { RoomPanel } from "../../ui/room-panel.js";
 import { comemora, onlineBanner, roundLabel } from "../hud/messages.js";
 import { paraFonteHud, textoHud } from "../hud/pixel-text.js";
@@ -167,6 +167,7 @@ export class OnlineScene extends Phaser.Scene {
 
   private draw(snapshot: MatchSnapshot, time: number, dt: number): void {
     const { state, series } = snapshot;
+    const names = nicknamesOf(snapshot.lobby);
     const localId = this.room.sessionId;
     const views = this.views ?? this.createViews(state, snapshot.lobby, localId);
 
@@ -198,9 +199,9 @@ export class OnlineScene extends Phaser.Scene {
       views.selfMarker.render(x, y, state.phase, state.elapsed, time, !selfView.isDead);
     }
 
-    this.timer.render(state, `SALA ${this.room.roomId}  ${roundLabel(series)}`, onlineBanner(state, series, localId));
+    this.timer.render(state, `SALA ${this.room.roomId}  ${roundLabel(series)}`, onlineBanner(state, series, localId, names));
     this.status.setText("");
-    this.scoreboard.render(state.players, localId);
+    this.scoreboard.render(state.players, localId, names);
   }
 
   private renderRoom(lobby: Lobby): void {

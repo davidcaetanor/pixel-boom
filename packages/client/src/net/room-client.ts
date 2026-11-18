@@ -34,12 +34,17 @@ async function withFirstState(joining: Promise<Room>): Promise<Room> {
   return room;
 }
 
-export function createRoom(): Promise<Room> {
-  return withFirstState(new Client(serverUrl()).create(ROOM_NAME));
+/** O servidor valida o apelido; sem ele, a vaga aparece pelo numero. */
+function joinOptions(nickname: string | null): Record<string, string> {
+  return nickname === null ? {} : { nickname };
 }
 
-export function joinRoom(code: string): Promise<Room> {
-  return withFirstState(new Client(serverUrl()).joinById(code));
+export function createRoom(nickname: string | null): Promise<Room> {
+  return withFirstState(new Client(serverUrl()).create(ROOM_NAME, joinOptions(nickname)));
+}
+
+export function joinRoom(code: string, nickname: string | null): Promise<Room> {
+  return withFirstState(new Client(serverUrl()).joinById(code, joinOptions(nickname)));
 }
 
 export function activeRoom(): Room | null {

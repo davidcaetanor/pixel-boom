@@ -33,6 +33,7 @@ interface RemoteMember {
   id: string;
   character: number;
   order: number;
+  nickname: string;
 }
 
 /** Formato do estado da sala, independente das classes de schema do servidor. */
@@ -64,6 +65,7 @@ export interface Member {
   readonly id: string;
   readonly character: number;
   readonly order: number;
+  readonly nickname: string | null;
 }
 
 /** Quem esta na sala, valido na espera e durante a partida. */
@@ -91,9 +93,22 @@ export type Snapshot = WaitingSnapshot | MatchSnapshot;
 
 function readLobby(remote: RemoteState): Lobby {
   const members: Member[] = [];
-  remote.members.forEach((m) => members.push({ id: m.id, character: m.character, order: m.order }));
+  remote.members.forEach((m) =>
+    members.push({ id: m.id, character: m.character, order: m.order, nickname: m.nickname === "" ? null : m.nickname }),
+  );
   members.sort((a, b) => a.order - b.order);
   return { hostId: remote.hostId, members };
+}
+
+/** Apelidos de quem esta na sala, por id; quem entrou sem apelido fica de fora. */
+export function nicknamesOf(lobby: Lobby): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  for (const member of lobby.members) {
+    if (member.nickname !== null) {
+      names.set(member.id, member.nickname);
+    }
+  }
+  return names;
 }
 
 export function readSnapshot(remote: RemoteState): Snapshot {

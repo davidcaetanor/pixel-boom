@@ -2,7 +2,7 @@
  * Sala de espera sobreposta ao canvas: codigo e convite, escolha de personagem
  * e o botao de iniciar, ativo so para o anfitriao. Nao conhece rede nem Phaser.
  */
-import { BALANCE, CHARACTER_COUNT } from "@pixelboom/shared";
+import { BALANCE, CHARACTER_COUNT, displayName } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
 
@@ -16,7 +16,7 @@ export interface RoomPanelView {
   readonly localId: string;
   readonly hostId: string;
   /** Em ordem de entrada; a posicao define a cor do slot. */
-  readonly members: readonly { readonly id: string; readonly character: number }[];
+  readonly members: readonly { readonly id: string; readonly character: number; readonly nickname: string | null }[];
 }
 
 /** Miniatura em escala de arte; o zoom do painel amplia junto com o resto. */
@@ -94,7 +94,7 @@ export class RoomPanel {
       this.copy.textContent = `Codigo ${view.code}  |  copiar convite`;
     }
 
-    const owners = new Map(view.members.map((m, slot) => [m.character, { id: m.id, slot }]));
+    const owners = new Map(view.members.map((m, slot) => [m.character, { id: m.id, slot, nickname: m.nickname }]));
     this.cards.forEach((card, character) => {
       const owner = owners.get(character);
       const mine = owner?.id === view.localId;
@@ -108,7 +108,11 @@ export class RoomPanel {
       }
       const label = card.querySelector(".roster-label");
       if (label !== null) {
-        label.textContent = owner === undefined ? "livre" : mine ? "voce" : `J${owner.slot + 1}`;
+        if (owner === undefined) {
+          label.textContent = "livre";
+        } else {
+          label.textContent = mine && owner.nickname === null ? "voce" : displayName(owner.nickname, owner.slot);
+        }
       }
     });
 
