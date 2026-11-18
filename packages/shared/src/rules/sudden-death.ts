@@ -1,6 +1,7 @@
 /**
- * Morte subita: a cada intervalo um anel vira parede, de fora para dentro,
- * eliminando jogadores, bombas e itens nas celulas fechadas.
+ * Arena fechando: a cada intervalo um anel vira parede, de fora para dentro,
+ * eliminando jogadores, bombas e itens nas celulas fechadas. Os aneis mais
+ * internos nunca fecham.
  */
 import { cellIndex, cellX, cellY } from "../config/arena.js";
 import { BALANCE } from "../config/balance.js";
@@ -12,14 +13,34 @@ import type { Player } from "../domain/player.js";
 import type { PowerUp } from "../domain/powerup.js";
 import { playerCell } from "./bomb-placement.js";
 
+export const CLOSABLE_RINGS = SUDDEN_DEATH_RINGS.length - BALANCE.time.suddenDeathOpenRings;
+
+/** Aneis fechados desde o inicio e instante em que o proximo fecha. */
+export interface RingSchedule {
+  readonly base: number;
+  readonly start: number;
+}
+
+export const ROUND_RINGS: RingSchedule = { base: 0, start: BALANCE.time.suddenDeathStart };
+export const DUEL_RINGS: RingSchedule = { base: BALANCE.duel.closedRings, start: BALANCE.duel.ringDelay };
+
+export function ringScheduleOf(state: { readonly duel: boolean }): RingSchedule {
+  return state.duel ? DUEL_RINGS : ROUND_RINGS;
+}
+
 /** Aneis que devem estar fechados no instante `elapsed`. */
-export function ringsDue(elapsed: number): number {
-  const { suddenDeathStart, suddenDeathRingInterval } = BALANCE.time;
-  if (elapsed < suddenDeathStart) {
-    return 0;
+export function ringsDue(elapsed: number, schedule: RingSchedule = ROUND_RINGS): number {
+  const extra =
+    elapsed < schedule.start ? 0 : Math.floor((elapsed - schedule.start) / BALANCE.time.suddenDeathRingInterval) + 1;
+  return Math.min(schedule.base + extra, CLOSABLE_RINGS);
+}
+
+/** Instante em que o anel fecha; Infinity para os que nunca fecham. */
+export function ringClosesAt(ring: number, schedule: RingSchedule = ROUND_RINGS): number {
+  if (ring >= CLOSABLE_RINGS) {
+    return Infinity;
   }
-  const due = Math.floor((elapsed - suddenDeathStart) / suddenDeathRingInterval) + 1;
-  return Math.min(due, SUDDEN_DEATH_RINGS.length);
+  return ring < schedule.base ? 0 : schedule.start + (ring - schedule.base) * BALANCE.time.suddenDeathRingInterval;
 }
 
 export interface SuddenDeathInput {
@@ -38,8 +59,12 @@ export interface SuddenDeathResult {
   readonly ringsClosed: number;
 }
 
-export function closeRings(input: SuddenDeathInput, elapsed: number): SuddenDeathResult {
-  const target = ringsDue(elapsed);
+export function closeRings(
+  input: SuddenDeathInput,
+  elapsed: number,
+  schedule: RingSchedule = ROUND_RINGS,
+): SuddenDeathResult {
+  const target = ringsDue(elapsed, schedule);
   if (target <= input.ringsClosed) {
     return { ...input, players: [...input.players], bombs: [...input.bombs], powerUps: [...input.powerUps] };
   }

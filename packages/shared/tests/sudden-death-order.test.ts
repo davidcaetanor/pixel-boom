@@ -36,9 +36,9 @@ describe("aneis da morte subita", () => {
     expect(first?.length ?? 0).toBeGreaterThan(last?.length ?? 0);
   });
 
-  it("fecha a arena dentro do teto de duracao da partida", () => {
-    const { suddenDeathStart, suddenDeathRingInterval, matchMax } = BALANCE.time;
-    const fim = suddenDeathStart + SUDDEN_DEATH_RING_COUNT * suddenDeathRingInterval;
+  it("fecha os aneis que fecham dentro do teto de duracao da partida", () => {
+    const { suddenDeathStart, suddenDeathRingInterval, suddenDeathOpenRings, matchMax } = BALANCE.time;
+    const fim = suddenDeathStart + (SUDDEN_DEATH_RING_COUNT - suddenDeathOpenRings) * suddenDeathRingInterval;
     expect(fim).toBeLessThanOrEqual(matchMax);
   });
 });

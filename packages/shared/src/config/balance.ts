@@ -32,6 +32,8 @@ export const BALANCE = {
     countdown: 3,
     suddenDeathStart: 90,
     suddenDeathRingInterval: 15,
+    /** Aneis internos que nunca fecham: a briga final acontece neles. */
+    suddenDeathOpenRings: 2,
     matchMax: 180,
     /** Pausa entre o fim de uma rodada online e o inicio da proxima. */
     roundRestartDelay: 5,
@@ -99,6 +101,14 @@ export const BALANCE = {
         enemyPull: 0.5,
       },
     },
+  },
+
+  /** Duelo de desempate da serie, so entre os lideres empatados. */
+  duel: {
+    /** Aneis ja fechados no inicio: um a mais aberto que o fechamento final. */
+    closedRings: 3,
+    /** Segundos de duelo ate fechar o anel que sobra alem da faixa final. */
+    ringDelay: 20,
   },
 
   /** Formato da partida. */

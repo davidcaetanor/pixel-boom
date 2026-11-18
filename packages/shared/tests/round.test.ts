@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { playingMatch } from "./helpers.js";
 import { BALANCE, TICK_SECONDS } from "../src/config/balance.js";
-import { cellIndex } from "../src/config/arena.js";
+import { ARENA_COLS, cellIndex } from "../src/config/arena.js";
 import { SUDDEN_DEATH_RINGS } from "../src/config/sudden-death-order.js";
 import { CellKind } from "../src/domain/cell.js";
 import { cellAt, setCell } from "../src/domain/grid.js";
@@ -10,7 +10,8 @@ import { POWER_UP_KINDS, PowerUpKind } from "../src/domain/powerup.js";
 import type { InputsByPlayer } from "../src/commands/input-command.js";
 import { createStaticGrid } from "../src/rules/map-generation.js";
 import { applyPowerUp, rollDrops, weightedKind } from "../src/rules/pickup.js";
-import { ringsDue } from "../src/rules/sudden-death.js";
+import { CLOSABLE_RINGS, DUEL_RINGS, ringClosesAt, ringsDue } from "../src/rules/sudden-death.js";
+import { ARENA_LAYOUTS } from "../src/config/arena-layouts.js";
 import { checkVictory } from "../src/rules/victory.js";
 import { seedRng } from "../src/simulation/rng.js";
 import { createMatchState, createPlayer, step } from "../src/simulation/step.js";
@@ -137,20 +138,42 @@ describe("pickup", () => {
   });
 });
 
-describe("sudden-death", () => {
-  it("nenhum anel antes de 90 s, um por intervalo depois, ate o ultimo", () => {
+describe("arena fechando", () => {
+  it("nenhum anel antes de 90 s, um por intervalo depois, ate a faixa central", () => {
     const { suddenDeathStart: start, suddenDeathRingInterval: gap } = BALANCE.time;
     expect(ringsDue(start - 0.01)).toBe(0);
     expect(ringsDue(start)).toBe(1);
     expect(ringsDue(start + gap - 0.01)).toBe(1);
     expect(ringsDue(start + gap)).toBe(2);
-    expect(ringsDue(10_000)).toBe(SUDDEN_DEATH_RINGS.length);
+    expect(ringsDue(10_000)).toBe(SUDDEN_DEATH_RINGS.length - BALANCE.time.suddenDeathOpenRings);
   });
 
-  it("ultimo anel fecha antes do teto da partida", () => {
-    const { suddenDeathStart, suddenDeathRingInterval, matchMax } = BALANCE.time;
-    const last = suddenDeathStart + (SUDDEN_DEATH_RINGS.length - 1) * suddenDeathRingInterval;
-    expect(last).toBeLessThanOrEqual(matchMax);
+  it("ultimo anel que fecha deixa tempo de briga na faixa central antes do teto", () => {
+    const last = ringClosesAt(CLOSABLE_RINGS - 1);
+    expect(last).toBeLessThan(BALANCE.time.matchMax);
+    expect(ringClosesAt(CLOSABLE_RINGS)).toBe(Infinity);
+  });
+
+  it("faixa central fica conectada em todo layout", () => {
+    const open = SUDDEN_DEATH_RINGS.slice(CLOSABLE_RINGS).flat();
+    ARENA_LAYOUTS.forEach((_, layout) => {
+      const grid = createStaticGrid(layout);
+      const floor = new Set(open.filter((c) => grid.cells[c] === CellKind.Floor));
+      const start = [...floor][0];
+      const seen = new Set(start === undefined ? [] : [start]);
+      const queue = [...seen];
+      while (queue.length > 0) {
+        const c = queue.pop() as number;
+        for (const n of [c + 1, c - 1, c + ARENA_COLS, c - ARENA_COLS]) {
+          if (floor.has(n) && !seen.has(n)) {
+            seen.add(n);
+            queue.push(n);
+          }
+        }
+      }
+      expect(floor.size).toBeGreaterThanOrEqual(BALANCE.net.maxClientsPerRoom * 2);
+      expect(seen.size).toBe(floor.size);
+    });
   });
 
   it("anel vira parede, mata quem esta nele e muda a fase", () => {
@@ -252,5 +275,51 @@ describe("fases", () => {
     }
     expect(s.phase).toBe(MatchPhase.Finished);
     expect(s.elapsed).toBeLessThanOrEqual(BALANCE.time.matchMax + TICK_SECONDS);
+  });
+});
+
+describe("duelo de desempate", () => {
+  const duel = createMatchState(5, ["a", "b", "c"], { duel: true, slots: [2, 5, 7] });
+  const open = new Set(SUDDEN_DEATH_RINGS.slice(BALANCE.duel.closedRings).flat());
+
+  it("comeca com os aneis externos fechados e sem caixas no que sobra", () => {
+    expect(duel.duel).toBe(true);
+    expect(duel.ringsClosed).toBe(BALANCE.duel.closedRings);
+    for (const ring of SUDDEN_DEATH_RINGS.slice(0, BALANCE.duel.closedRings)) {
+      for (const cell of ring) {
+        expect(duel.grid.cells[cell]).toBe(CellKind.Wall);
+      }
+    }
+    for (const cell of open) {
+      expect(duel.grid.cells[cell]).not.toBe(CellKind.Crate);
+    }
+  });
+
+  it("deixa um anel a mais aberto que o fechamento final da rodada", () => {
+    expect(BALANCE.duel.closedRings).toBe(CLOSABLE_RINGS - 1);
+  });
+
+  it("espalha os jogadores em piso livre e mantem a vaga de cada um", () => {
+    const cells = duel.players.map((p) => cellIndex(Math.floor(p.x), Math.floor(p.y)));
+    expect(new Set(cells).size).toBe(3);
+    for (const cell of cells) {
+      expect(open.has(cell)).toBe(true);
+      expect(duel.grid.cells[cell]).toBe(CellKind.Floor);
+    }
+    expect(duel.players.map((p) => p.slot)).toEqual([2, 5, 7]);
+  });
+
+  it("fecha o anel que sobra depois do atraso e para na faixa central", () => {
+    expect(ringsDue(0, DUEL_RINGS)).toBe(BALANCE.duel.closedRings);
+    expect(ringsDue(BALANCE.duel.ringDelay, DUEL_RINGS)).toBe(CLOSABLE_RINGS);
+    expect(ringsDue(10_000, DUEL_RINGS)).toBe(CLOSABLE_RINGS);
+  });
+
+  it("cabe a sala inteira no duelo em todo layout", () => {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const full = createMatchState(seed, ["a", "b", "c", "d", "e", "f", "g", "h"], { duel: true });
+      const cells = full.players.map((p) => cellIndex(Math.floor(p.x), Math.floor(p.y)));
+      expect(new Set(cells).size).toBe(8);
+    }
   });
 });
