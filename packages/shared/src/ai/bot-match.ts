@@ -56,10 +56,19 @@ function collected(before: MatchState, after: MatchState): string[] {
   return takers;
 }
 
-/** `bots` e a dificuldade de cada bot, na ordem dos slots. */
-export function playBotMatch(seed: number, bots: readonly BotDifficulty[]): BotMatchReport {
-  const ids = bots.map((_, i) => `bot${i}`);
-  let state = createMatchState(seed, ids);
+/**
+ * `bots` e a dificuldade de cada bot, na ordem dos slots. `only` restringe a
+ * rodada a alguns deles, como no duelo de desempate.
+ */
+export function playBotMatch(
+  seed: number,
+  bots: readonly BotDifficulty[],
+  options: { readonly duel?: boolean; readonly only?: readonly string[] } = {},
+): BotMatchReport {
+  const everyone = bots.map((_, i) => `bot${i}`);
+  const ids = options.only === undefined ? everyone : everyone.filter((id) => options.only?.includes(id));
+  const slots = ids.map((id) => everyone.indexOf(id));
+  let state = createMatchState(seed, ids, { duel: options.duel === true, slots });
   const memories = new Map<string, BotMemory>(ids.map((id, i) => [id, createBotMemory(seed + i)]));
   const deaths: Record<string, DeathCause> = {};
   const pickups: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
@@ -67,7 +76,7 @@ export function playBotMatch(seed: number, bots: readonly BotDifficulty[]): BotM
   while (state.phase !== MatchPhase.Finished) {
     const inputs: Record<string, ReturnType<typeof decideBot>["input"]> = {};
     ids.forEach((id, i) => {
-      const decision = decideBot(state, id, bots[i] ?? "normal", memories.get(id) ?? createBotMemory(seed), TICK_SECONDS);
+      const decision = decideBot(state, id, bots[slots[i] ?? 0] ?? "normal", memories.get(id) ?? createBotMemory(seed), TICK_SECONDS);
       memories.set(id, decision.memory);
       inputs[id] = decision.input;
     });
