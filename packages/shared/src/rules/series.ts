@@ -1,12 +1,13 @@
 /**
- * Serie de rodadas: vence quem chega a roundsToWin. Esgotado maxRounds, vence
- * quem tiver mais vitorias; empate no topo leva os lideres a um duelo de morte
- * subita, repetido ate um deles vencer.
+ * Serie de rodadas em melhor de N: vence quem chega a mais da metade de N.
+ * Esgotadas as N rodadas, vence quem tiver mais vitorias; empate no topo leva
+ * os lideres a um duelo de morte subita, repetido ate um deles vencer.
  */
 import { BALANCE } from "../config/balance.js";
 import type { MatchState } from "../domain/match-state.js";
 
 export interface Series {
+  readonly bestOf: number;
   /** Rodadas jogadas ate agora. */
   readonly roundsPlayed: number;
   readonly wins: Readonly<Record<string, number>>;
@@ -16,7 +17,27 @@ export interface Series {
   readonly duel: readonly string[];
 }
 
-export const NEW_SERIES: Series = { roundsPlayed: 0, wins: {}, finished: false, winnerId: null, duel: [] };
+const BEST_OF: readonly number[] = BALANCE.match.bestOfOptions;
+
+export function isBestOf(value: unknown): value is number {
+  return typeof value === "number" && BEST_OF.includes(value);
+}
+
+export function roundsToWin(bestOf: number): number {
+  return Math.ceil(bestOf / 2);
+}
+
+/** Proximo formato na direcao pedida, parando nas pontas. */
+export function stepBestOf(current: number, direction: 1 | -1): number {
+  const index = BEST_OF.indexOf(current) + direction;
+  return BEST_OF[Math.max(0, Math.min(index, BEST_OF.length - 1))] ?? current;
+}
+
+export function newSeries(bestOf: number = BALANCE.match.bestOfDefault): Series {
+  return { bestOf, roundsPlayed: 0, wins: {}, finished: false, winnerId: null, duel: [] };
+}
+
+export const NEW_SERIES: Series = newSeries();
 
 /** Quem tem mais vitorias; sem nenhuma vitoria, todos os participantes. */
 function leaders(wins: Readonly<Record<string, number>>, participants: readonly string[]): string[] {
@@ -40,12 +61,12 @@ export function recordRound(series: Series, roundWinnerId: string | null, partic
     return roundWinnerId !== null && series.duel.includes(roundWinnerId) ? finish(next, roundWinnerId) : next;
   }
 
-  const { roundsToWin, maxRounds } = BALANCE.match;
-  const champion = Object.entries(wins).find(([, n]) => n >= roundsToWin)?.[0] ?? null;
+  const target = roundsToWin(series.bestOf);
+  const champion = Object.entries(wins).find(([, n]) => n >= target)?.[0] ?? null;
   if (champion !== null) {
     return finish(next, champion);
   }
-  if (next.roundsPlayed < maxRounds) {
+  if (next.roundsPlayed < series.bestOf) {
     return next;
   }
   const tied = leaders(wins, participants);
