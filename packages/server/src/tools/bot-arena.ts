@@ -17,6 +17,9 @@ const causes = new Map<string, number>();
 let draws = 0;
 let seconds = 0;
 let earlyRing = 0;
+let items = 0;
+let decidedByItems = 0;
+let richerWon = 0;
 const started = performance.now();
 
 for (let seed = 1; seed <= matches; seed += 1) {
@@ -33,6 +36,16 @@ for (let seed = 1; seed <= matches; seed += 1) {
     earlyRing += 1;
   }
   seconds += report.seconds;
+  const counts = Object.values(report.pickups);
+  items += counts.reduce((soma, n) => soma + n, 0);
+  const most = Math.max(...counts);
+  const leaders = Object.keys(report.pickups).filter((id) => report.pickups[id] === most);
+  if (report.winnerId !== null && leaders.length === 1) {
+    decidedByItems += 1;
+    if (leaders[0] === report.winnerId) {
+      richerWon += 1;
+    }
+  }
 }
 
 const lives = matches * bots.length;
@@ -43,6 +56,8 @@ const lines = [
   `empates: ${draws} (${percent(draws, matches)})`,
   ...[...causes].map(([cause, n]) => `mortes ${cause}: ${n} (${percent(n, lives)} das vidas)`),
   `anel antes do fechamento total: ${earlyRing} partidas`,
+  `itens por jogador por rodada: ${(items / lives).toFixed(1)}`,
+  `quem pegou mais itens venceu: ${richerWon} de ${decidedByItems} (${percent(richerWon, Math.max(decidedByItems, 1))})`,
   `duracao media: ${(seconds / matches).toFixed(1)} s`,
   `custo: ${((performance.now() - started) / matches / MS_PER_SECOND).toFixed(2)} s por partida`,
 ];

@@ -18,6 +18,8 @@ export interface BotMatchReport {
   readonly winnerId: string | null;
   readonly seconds: number;
   readonly deaths: Readonly<Record<string, DeathCause>>;
+  /** Itens coletados por jogador. */
+  readonly pickups: Readonly<Record<string, number>>;
 }
 
 function causeOf(before: MatchState, after: MatchState, id: string): DeathCause {
@@ -34,12 +36,33 @@ function causeOf(before: MatchState, after: MatchState, id: string): DeathCause 
   return killer.ownerId === id ? DeathCause.OwnBomb : DeathCause.EnemyBomb;
 }
 
+/** Itens que sumiram do chao com um jogador vivo em cima, atribuidos a ele. */
+function collected(before: MatchState, after: MatchState): string[] {
+  const remaining = new Set(after.powerUps.map((p) => cellIndex(p.x, p.y)));
+  const takers: string[] = [];
+  for (const item of before.powerUps) {
+    const cell = cellIndex(item.x, item.y);
+    if (remaining.has(cell)) {
+      continue;
+    }
+    const taker = after.players.find((p) => {
+      const c = playerCell(p);
+      return p.alive && cellIndex(c.x, c.y) === cell;
+    });
+    if (taker !== undefined) {
+      takers.push(taker.id);
+    }
+  }
+  return takers;
+}
+
 /** `bots` e a dificuldade de cada bot, na ordem dos slots. */
 export function playBotMatch(seed: number, bots: readonly BotDifficulty[]): BotMatchReport {
   const ids = bots.map((_, i) => `bot${i}`);
   let state = createMatchState(seed, ids);
   const memories = new Map<string, BotMemory>(ids.map((id, i) => [id, createBotMemory(seed + i)]));
   const deaths: Record<string, DeathCause> = {};
+  const pickups: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
 
   while (state.phase !== MatchPhase.Finished) {
     const inputs: Record<string, ReturnType<typeof decideBot>["input"]> = {};
@@ -55,7 +78,10 @@ export function playBotMatch(seed: number, bots: readonly BotDifficulty[]): BotM
         deaths[p.id] = causeOf(state, next, p.id);
       }
     }
+    for (const id of collected(state, next)) {
+      pickups[id] = (pickups[id] ?? 0) + 1;
+    }
     state = next;
   }
-  return { winnerId: state.winnerId, seconds: Math.max(state.elapsed, 0), deaths };
+  return { winnerId: state.winnerId, seconds: Math.max(state.elapsed, 0), deaths, pickups };
 }
