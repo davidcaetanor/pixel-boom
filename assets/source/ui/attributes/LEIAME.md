@@ -7,15 +7,16 @@ com o estado do jogo fica no codigo do HUD.
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
-| `ui-icone-bomba.png` | 11x11 | bombas simultaneas (desenhada a mao) |
+| `ui-icone-bomba.png` | 11x13 | bombas simultaneas (PixelLab, ajustado) |
 | `ui-icone-alcance.png` | 12x13 | alcance da explosao (PixelLab, ajustado) |
 | `ui-icone-velocidade.png` | 15x13 | impulso de velocidade (PixelLab, com rastro) |
 | `ui-barra-moldura.png` | 24x5 | moldura da barra do impulso |
 | `ui-barra-preenchimento.png` | 22x3 | preenchimento; cortar da direita conforme o tempo restante |
 | `ui-banner.png` | 9-slice 15 px | placa, igual a do relogio |
 
-Os icones saem de `assets/source/ui/desenho/icones_atributos.py`: a bomba e
-desenhada la; o fogo e a bota vem dos PNGs desta pasta, ajustados pelo script.
+Os icones saem de `assets/source/ui/desenho/icones_atributos.py`, a partir dos
+PNGs gerados nesta pasta: corpo da bomba preenchido e pavio compacto, ponta do
+fogo sem contorno e bota com rastro no lugar da marca solta.
 A barra sai de `glifos.py`.
 
 ## Layout
