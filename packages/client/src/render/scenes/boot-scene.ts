@@ -1,6 +1,7 @@
 /** Carrega texturas e sons e abre a partida. */
 import Phaser from "phaser";
 import { configureSound, loadSfx } from "../../audio/sfx.js";
+import { attachUiSounds } from "../../audio/ui-sounds.js";
 import { registraFonteHud } from "../hud/pixel-text.js";
 import {
   ANIMADAS,
@@ -48,6 +49,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     registraFonteHud(this);
     configureSound(this.sound);
+    attachUiSounds(this.sound);
     const local = new URLSearchParams(window.location.search).has("local");
     this.scene.start(local ? "match" : "lobby");
   }

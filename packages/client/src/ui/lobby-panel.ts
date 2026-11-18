@@ -7,6 +7,7 @@ import {
   parseNickname,
 } from "@pixelboom/shared";
 import { DIFFICULTY_LABEL } from "./labels.js";
+import { announceBack, markBack } from "../audio/ui-sounds.js";
 import { moveFocus } from "./keyboard-nav.js";
 
 export interface LobbyActions {
@@ -198,7 +199,7 @@ export class LobbyPanel {
       title,
       ...choices,
       hint("Dificil reage mais rapido e ataca mais"),
-      button("Voltar", () => this.show("inicio")),
+      markBack(button("Voltar", () => this.show("inicio"))),
     );
     return screen;
   }
@@ -226,7 +227,7 @@ export class LobbyPanel {
       }),
       hint("ou entre com um codigo"),
       form,
-      button("Voltar", () => this.show("inicio")),
+      markBack(button("Voltar", () => this.show("inicio"))),
     );
     return screen;
   }
@@ -261,7 +262,7 @@ export class LobbyPanel {
       list.append(term, desc);
     }
 
-    screen.append(title, goal, list, button("Voltar", () => this.show("inicio")));
+    screen.append(title, goal, list, markBack(button("Voltar", () => this.show("inicio"))));
     return screen;
   }
 
@@ -308,6 +309,7 @@ export class LobbyPanel {
   private onKey(event: KeyboardEvent): void {
     if (event.key === "Escape" && this.current !== "inicio") {
       event.preventDefault();
+      announceBack();
       this.show("inicio");
       return;
     }
