@@ -61,6 +61,26 @@ export function parseCharacterPick(raw: unknown): number | null {
   return index;
 }
 
+function single(raw: unknown, key: string): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+  const keys = Object.keys(raw);
+  return keys.length === 1 && keys[0] === key ? (raw as Record<string, unknown>)[key] : undefined;
+}
+
+/** Capacidade pedida pelo anfitriao: `{ value }` inteiro. A faixa e validada pela regra. */
+export function parseCapacity(raw: unknown): number | null {
+  const value = single(raw, "value");
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+/** Remocao pedida pelo anfitriao: `{ id }` do membro. */
+export function parseKick(raw: unknown): string | null {
+  const id = single(raw, "id");
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
 /** Opcoes de entrada na sala: `{ nickname }`. */
 export function parseJoinNickname(options: unknown): string | null {
   if (typeof options !== "object" || options === null || Array.isArray(options)) {

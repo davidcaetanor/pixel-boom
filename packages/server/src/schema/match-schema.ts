@@ -56,6 +56,8 @@ export class MatchSchema extends Schema {
   @type("string") winnerId = "";
   @type("uint8") connected = 0;
   @type("string") hostId = "";
+  /** Vagas da sala, contando humanos e bots. */
+  @type("uint8") capacity = 0;
   /** Dificuldade do bot da sala; vazio em sala so de humanos. */
   @type("string") botDifficulty = "";
   @type({ map: MemberSchema }) members = new MapSchema<MemberSchema>();
