@@ -2,6 +2,7 @@
 import { BALANCE, CHARACTER_COUNT, displayName, shortName, type BotDifficulty } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
+import { announceBack, markBack } from "../audio/ui-sounds.js";
 import { moveFocus } from "./keyboard-nav.js";
 import { DIFFICULTY_LABEL } from "./labels.js";
 
@@ -95,6 +96,7 @@ export class RoomPanel {
     leave.type = "button";
     leave.textContent = "Voltar ao menu";
     leave.addEventListener("click", () => actions.onLeave());
+    markBack(leave);
 
     const box = document.createElement("div");
     box.className = "ui-panel";
@@ -103,6 +105,7 @@ export class RoomPanel {
     this.root.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        announceBack();
         actions.onLeave();
         return;
       }

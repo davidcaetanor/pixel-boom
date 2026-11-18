@@ -1,5 +1,7 @@
-/** Carrega as texturas e abre a partida. */
+/** Carrega texturas e sons e abre a partida. */
 import Phaser from "phaser";
+import { configureSound, loadSfx } from "../../audio/sfx.js";
+import { attachUiSounds } from "../../audio/ui-sounds.js";
 import { registraFonteHud } from "../hud/pixel-text.js";
 import {
   ANIMADAS,
@@ -20,6 +22,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    loadSfx(this);
     for (const nome of Object.values(TEXTURA)) {
       this.load.image(nome, caminhoDaTextura(nome));
     }
@@ -45,6 +48,8 @@ export class BootScene extends Phaser.Scene {
   /** `?local` abre a partida offline; o padrao e o lobby da sala online. */
   create(): void {
     registraFonteHud(this);
+    configureSound(this.sound);
+    attachUiSounds(this.sound);
     const local = new URLSearchParams(window.location.search).has("local");
     this.scene.start(local ? "match" : "lobby");
   }

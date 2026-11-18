@@ -17,6 +17,8 @@ import {
   type Player,
 } from "@pixelboom/shared";
 import type { Room } from "@colyseus/sdk";
+import { MatchSounds } from "../../audio/match-sounds.js";
+import { SFX, playSfx } from "../../audio/sfx.js";
 import { KeyboardSource } from "../../input/keyboard-source.js";
 import { SnapshotBuffer } from "../../net/interpolation.js";
 import { predictionFor, type LocalPrediction } from "../../net/prediction.js";
@@ -68,6 +70,9 @@ export class OnlineScene extends Phaser.Scene {
   private waitingLobby: Lobby | null = null;
   private panel: RoomPanel | null = null;
   private views: MatchViews | null = null;
+  private sounds: MatchSounds | null = null;
+  /** Quantos estavam na sala no ultimo desenho da espera, para soar a cada entrada. */
+  private roomSize = 0;
 
   constructor() {
     super({ key: "online" });
@@ -87,6 +92,8 @@ export class OnlineScene extends Phaser.Scene {
     this.latest = null;
     this.waitingLobby = null;
     this.views = null;
+    this.sounds = new MatchSounds(this, room.sessionId);
+    this.roomSize = 0;
     this.loop.accumulator = 0;
 
     this.keyboard = new KeyboardSource();
@@ -184,6 +191,7 @@ export class OnlineScene extends Phaser.Scene {
     views.explosions.render(state.explosions);
 
     const now = performance.now();
+    const shown: Player[] = [];
     for (const player of state.players) {
       const view = views.players.get(player.id);
       if (view === undefined) {
@@ -193,12 +201,15 @@ export class OnlineScene extends Phaser.Scene {
         const frames = this.prediction.frames;
         const current = frames === null ? player : { ...frames.current, alive: player.alive };
         view.render(frames?.previous ?? player, current, interpolationAlpha(this.loop), dt, comemora(state, player.id));
+        shown.push(current);
         continue;
       }
       const sampled = this.buffer.sample(player.id, now) ?? player;
       view.render(this.drawnOthers.get(player.id) ?? sampled, sampled, 1, dt, comemora(state, player.id));
       this.drawnOthers.set(player.id, sampled);
+      shown.push(sampled);
     }
+    this.sounds?.update(state, shown);
 
     const selfView = views.players.get(localId);
     if (views.selfMarker !== null && selfView !== undefined) {
@@ -218,6 +229,10 @@ export class OnlineScene extends Phaser.Scene {
 
   private renderRoom(lobby: Lobby): void {
     this.status.setText("");
+    if (this.roomSize > 0 && lobby.members.length > this.roomSize) {
+      playSfx(this.sound, SFX.playerJoin);
+    }
+    this.roomSize = lobby.members.length;
     this.panel ??= new RoomPanel({
       onPick: (character) => this.room.send("character", { index: character }),
       onStart: () => this.room.send("start"),

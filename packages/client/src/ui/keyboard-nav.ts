@@ -1,3 +1,5 @@
+import { announceMove } from "../audio/ui-sounds.js";
+
 /** Foco pelas setas na ordem do DOM; numa grade, cima e baixo pulam uma linha. */
 export interface FocusGrid {
   readonly items: readonly HTMLElement[];
@@ -52,6 +54,9 @@ export function moveFocus(event: KeyboardEvent, items: readonly HTMLElement[], g
 
   if (target !== null) {
     event.preventDefault();
+    if (target !== current) {
+      announceMove();
+    }
     target.focus();
   }
   return true;
