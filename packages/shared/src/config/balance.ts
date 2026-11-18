@@ -76,23 +76,24 @@ export const BALANCE = {
     powerUpValue: 8,
     crateValue: 3,
     travelCost: 1,
-    /** Desconto por celula de distancia ate o adversario mais proximo. */
-    enemyPull: 0.5,
     /** Abaixo desta distancia, chegar mais perto nao vale mais nada. */
     enemyComfortCells: 2,
     difficulty: {
       normal: {
         /** Bomba inimiga mais nova que isto ainda nao foi notada. */
-        reactionTime: 0.35,
+        reactionTime: 0.6,
         /** Chance por segundo de soltar bomba quando ela prende o adversario. */
-        attackChance: 0.35,
+        attackChance: 0.12,
         /** Chance por segundo de soltar bomba com o adversario so na linha da explosao. */
-        pokeChance: 0.2,
+        pokeChance: 0.04,
+        /** Desconto por celula de distancia ate o adversario mais proximo. */
+        enemyPull: 0.2,
       },
       hard: {
         reactionTime: 0.12,
         attackChance: 0.9,
         pokeChance: 0.8,
+        enemyPull: 0.5,
       },
     },
   },

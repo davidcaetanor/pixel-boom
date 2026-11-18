@@ -123,7 +123,7 @@ function planBomb(view: View): BombPlan | null {
   return { escape, trapsEnemy, hitsEnemy, crates: blast.crates.length };
 }
 
-function targetScore(view: View, cell: number): number {
+function targetScore(view: View, cell: number, enemyPull: number): number {
   const { state, me } = view;
   const arrival = view.paths.arrival[cell] ?? Infinity;
   const ai = BALANCE.ai;
@@ -138,7 +138,7 @@ function targetScore(view: View, cell: number): number {
     ...view.enemies.map((e) => Math.abs(cellX(cellOf(e)) - cellX(cell)) + Math.abs(cellY(cellOf(e)) - cellY(cell))),
   );
   if (Number.isFinite(nearest)) {
-    score -= ai.enemyPull * Math.max(nearest, ai.enemyComfortCells);
+    score -= enemyPull * Math.max(nearest, ai.enemyComfortCells);
   }
   return score;
 }
@@ -151,20 +151,20 @@ function stillSafe(view: View, cell: number | null): cell is number {
   return arrival !== Infinity && isSafeSpot(view.danger, cell, arrival, MARGIN);
 }
 
-function chooseTarget(view: View, current: number | null): number {
+function chooseTarget(view: View, current: number | null, enemyPull: number): number {
   let best = view.cell;
   let bestScore = -Infinity;
   for (const cell of view.paths.order) {
     if (!isSafeSpot(view.danger, cell, view.paths.arrival[cell] ?? Infinity, MARGIN)) {
       continue;
     }
-    const score = targetScore(view, cell);
+    const score = targetScore(view, cell, enemyPull);
     if (score > bestScore) {
       best = cell;
       bestScore = score;
     }
   }
-  const keep = stillSafe(view, current) && targetScore(view, current) + BALANCE.ai.targetHysteresis >= bestScore;
+  const keep = stillSafe(view, current) && targetScore(view, current, enemyPull) + BALANCE.ai.targetHysteresis >= bestScore;
   return keep ? current : best;
 }
 
@@ -246,6 +246,6 @@ export function decideBot(
     }
   }
 
-  const target = memory.hold > 0 && stillSafe(view, memory.target) ? memory.target : chooseTarget(view, memory.target);
+  const target = memory.hold > 0 && stillSafe(view, memory.target) ? memory.target : chooseTarget(view, memory.target, params.enemyPull);
   return { input: steer(view, target, dt), memory: { target, hold: hold(memory, target, dt), rng } };
 }
