@@ -3,8 +3,6 @@ import {
   BALANCE,
   BotDifficulty,
   CHARACTER_COUNT,
-  canAddBot,
-  canSetCapacity,
   displayName,
   shortName,
 } from "@pixelboom/shared";
@@ -18,9 +16,8 @@ export interface RoomPanelActions {
   onPick(character: number): void;
   onStart(): void;
   onLeave(): void;
-  onCapacity(value: number): void;
   onKick(memberId: string): void;
-  onAddBot(): void;
+  onSettings(): void;
   onBotDifficulty(botId: string): void;
   onBotCharacter(botId: string, character: number): void;
 }
@@ -30,6 +27,7 @@ export interface RoomPanelView {
   readonly localId: string;
   readonly hostId: string;
   readonly capacity: number;
+  readonly bestOf: number;
   /** Sala contra bot: sem codigo para convidar. */
   readonly closed: boolean;
   /** Em ordem de entrada; a posicao define a cor do slot. */
@@ -57,25 +55,17 @@ export class RoomPanel {
   private readonly start: HTMLButtonElement;
   private readonly copy: HTMLButtonElement;
   private readonly title: HTMLElement;
+  private readonly gear: HTMLButtonElement;
+  private readonly summary: HTMLElement;
   private readonly cards: HTMLButtonElement[] = [];
   private readonly kicks: HTMLButtonElement[] = [];
   private readonly badges: HTMLButtonElement[] = [];
-  private readonly addBot: HTMLButtonElement;
-  private readonly capacityRow: HTMLElement;
-  private readonly capacityLess: HTMLButtonElement;
-  private readonly capacityMore: HTMLButtonElement;
-  private readonly capacityLabel: HTMLElement;
   /** Dono de cada personagem no ultimo desenho; a tecla Delete remove o do cartao focado. */
   private ownerOf: (character: number) => string | null = () => null;
   private isBotOf: (character: number) => boolean = () => false;
   /** Bot escolhido pelo anfitriao; o proximo clique num personagem livre o troca. */
   private editingBot: string | null = null;
   private lastView: RoomPanelView | null = null;
-  /** Capacidade exibida; adiantada no clique para cliques seguidos somarem antes da resposta. */
-  private capacity = 0;
-  private occupants = 0;
-  /** Pedido ainda nao confirmado pelo servidor; respostas intermediarias nao o desfazem. */
-  private pendingCapacity: number | null = null;
   private code = "";
   private focused = false;
 
@@ -85,6 +75,17 @@ export class RoomPanel {
 
     this.title = document.createElement("h1");
     this.title.textContent = "Sala";
+    this.gear = document.createElement("button");
+    this.gear.type = "button";
+    this.gear.className = "room-gear";
+    this.gear.title = "Configuracoes da sala";
+    this.gear.setAttribute("aria-label", this.gear.title);
+    this.gear.addEventListener("click", () => actions.onSettings());
+    const header = document.createElement("div");
+    header.className = "room-header";
+    header.append(document.createElement("span"), this.title, this.gear);
+    this.summary = document.createElement("p");
+    this.summary.className = "room-summary";
 
     this.copy = document.createElement("button");
     this.copy.type = "button";
@@ -144,45 +145,25 @@ export class RoomPanel {
       grid.append(cell);
     }
 
-    this.capacityLess = document.createElement("button");
-    this.capacityLess.type = "button";
-    this.capacityLess.textContent = "-";
-    this.capacityLess.title = "Menos vagas";
-    this.capacityLess.addEventListener("click", () => this.requestCapacity(this.capacity - 1, actions));
-    this.capacityMore = document.createElement("button");
-    this.capacityMore.type = "button";
-    this.capacityMore.textContent = "+";
-    this.capacityMore.title = "Mais vagas";
-    this.capacityMore.addEventListener("click", () => this.requestCapacity(this.capacity + 1, actions));
-    this.capacityLabel = document.createElement("span");
-    this.capacityLabel.className = "room-capacity-label";
-    this.capacityRow = document.createElement("div");
-    this.capacityRow.className = "room-capacity";
-    this.addBot = document.createElement("button");
-    this.addBot.type = "button";
-    this.addBot.textContent = "+ Bot";
-    this.addBot.className = "room-add-bot";
-    this.addBot.addEventListener("click", () => actions.onAddBot());
-    this.capacityRow.append(this.capacityLess, this.capacityLabel, this.capacityMore, this.addBot);
-
     this.status = document.createElement("p");
     this.status.className = "room-status";
 
     this.start = document.createElement("button");
     this.start.type = "button";
     this.start.textContent = "Iniciar";
-    this.start.className = "room-start";
+    this.start.className = "room-main";
     this.start.addEventListener("click", () => actions.onStart());
 
     const leave = document.createElement("button");
     leave.type = "button";
     leave.textContent = "Voltar ao menu";
+    leave.className = "room-main";
     leave.addEventListener("click", () => actions.onLeave());
     markBack(leave);
 
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(this.title, this.copy, grid, this.capacityRow, this.status, this.start, leave);
+    box.append(header, this.copy, grid, this.summary, this.status, this.start, leave);
     this.root.append(box);
     this.root.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
@@ -202,7 +183,7 @@ export class RoomPanel {
         this.kicks[focusedCard]?.click();
         return;
       }
-      moveFocus(event, [this.copy, ...this.cards, this.capacityLess, this.capacityMore, this.addBot, this.start, leave], {
+      moveFocus(event, [this.gear, this.copy, ...this.cards, this.start, leave], {
         items: this.cards,
         columns: ROSTER_COLUMNS,
       });
@@ -275,15 +256,8 @@ export class RoomPanel {
     }
 
     const count = view.members.length;
-    this.occupants = count;
-    this.capacityRow.hidden = !isHost;
-    const pending = this.pendingCapacity;
-    if (pending === null || pending === view.capacity || !canSetCapacity(pending, count)) {
-      this.pendingCapacity = null;
-      this.showCapacity(view.capacity);
-    } else {
-      this.showCapacity(pending);
-    }
+    this.gear.hidden = !isHost;
+    this.summary.textContent = `Melhor de ${view.bestOf}`;
     const needed = BALANCE.net.minPlayersToStart;
     this.start.hidden = !isHost;
     this.start.disabled = count < needed;
@@ -319,22 +293,6 @@ export class RoomPanel {
     if (this.lastView !== null) {
       this.render(this.lastView);
     }
-  }
-
-  private requestCapacity(value: number, actions: RoomPanelActions): void {
-    if (canSetCapacity(value, this.occupants)) {
-      this.pendingCapacity = value;
-      this.showCapacity(value);
-      actions.onCapacity(value);
-    }
-  }
-
-  private showCapacity(value: number): void {
-    this.capacity = value;
-    this.capacityLabel.textContent = `${value} vagas`;
-    this.capacityLess.disabled = !canSetCapacity(value - 1, this.occupants);
-    this.capacityMore.disabled = !canSetCapacity(value + 1, this.occupants);
-    this.addBot.disabled = !canAddBot(this.occupants, value);
   }
 
   dispose(): void {
