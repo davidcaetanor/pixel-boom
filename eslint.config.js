@@ -122,4 +122,17 @@ export default tseslint.config(
     files: ["packages/client/**/*.ts"],
     languageOptions: { globals: { window: "readonly", document: "readonly" } },
   },
+
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
+      },
+    },
+  },
 );
