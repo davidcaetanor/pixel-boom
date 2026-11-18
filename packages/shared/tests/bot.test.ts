@@ -171,6 +171,25 @@ describe("decisao do bot", () => {
     expect(bombed).toBe(true);
   });
 
+  it("sem caixas, solta bomba com o adversario na linha e fuga garantida", () => {
+    const { state } = scene(["B.E..", ".#.#.", "....."]);
+    expect(decide(state).input.bomb).toBe(true);
+  });
+
+  it("sem caixas, vai atras do adversario em vez de ficar parado", () => {
+    const { state } = scene(["B......", ".#####.", "......E"]);
+    let current = state;
+    let memory = createBotMemory(7);
+    let bombed = false;
+    for (let t = 0; t < 6 && !bombed; t += TICK_SECONDS) {
+      const decision = decideBot(current, BOT, BotDifficulty.Normal, memory, TICK_SECONDS);
+      bombed = decision.input.bomb === true;
+      memory = decision.memory;
+      current = step(current, { [BOT]: decision.input }, TICK_SECONDS);
+    }
+    expect(bombed).toBe(true);
+  });
+
   it("decide igual para o mesmo estado e a mesma memoria", () => {
     const { state } = scene(["E.B..", "####.", "####."]);
     expect(decide(state)).toEqual(decide(state));

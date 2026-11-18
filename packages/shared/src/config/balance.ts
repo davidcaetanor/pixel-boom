@@ -93,6 +93,8 @@ export const BALANCE = {
     travelCost: 1,
     /** Abaixo desta distancia, chegar mais perto nao vale mais nada. */
     enemyComfortCells: 2,
+    /** Sem caixas no mapa: bonus da celula de onde a bomba pega o adversario. */
+    huntLineValue: 4,
     difficulty: {
       normal: {
         /** Bomba inimiga mais nova que isto ainda nao foi notada. */
@@ -105,6 +107,8 @@ export const BALANCE = {
         enemyPull: 0.15,
         /** Com a arena fechando, chances e atracao multiplicadas por isto; chance limitada a 1 por segundo. */
         pressure: 1.5,
+        /** Sem caixas no mapa: chance por segundo de soltar bomba com o adversario na linha. */
+        huntChance: 0.5,
         /** Intervalo entre decisoes de alvo e de bomba; fugir de perigo continua imediato. */
         thinkSeconds: 0.35,
       },
@@ -114,6 +118,7 @@ export const BALANCE = {
         pokeChance: 0.8,
         enemyPull: 0.5,
         pressure: 3,
+        huntChance: 1,
         thinkSeconds: 0,
       },
     },
