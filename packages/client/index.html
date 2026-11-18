@@ -205,12 +205,9 @@
         text-align: center;
       }
       /* Largura fixa: trocar de tela no menu nao redimensiona o painel. */
-      .lobby.pause .ui-panel {
-        width: 220px;
-      }
-      /* Cresce com a fonte do aparelho: sem Courier New o monoespaco e mais largo. */
+      .lobby.pause .ui-panel,
       .lobby.room-settings .ui-panel {
-        min-width: 220px;
+        width: 220px;
       }
       .pause-screen {
         display: flex;
@@ -584,7 +581,7 @@
        * Sala em tela baixa: os cards a esquerda, titulo e acoes a direita.
        * pixel-scale.ts liga .ui-deitada quando esse formato ganha zoom.
        */
-      .ui-deitada .room .ui-panel {
+      .ui-deitada .room:not(.room-settings) .ui-panel {
         display: grid;
         grid-template-columns: auto 160px;
         grid-auto-rows: auto;
@@ -593,23 +590,23 @@
         align-items: center;
         justify-items: center;
       }
-      .ui-deitada .room .ui-panel > * {
+      .ui-deitada .room:not(.room-settings) .ui-panel > * {
         grid-column: 2;
       }
-      .ui-deitada .room .ui-panel > .roster {
+      .ui-deitada .room:not(.room-settings) .ui-panel > .roster {
         grid-column: 1;
         grid-row: 1 / span 7;
       }
-      .ui-deitada .room .room-summary,
-      .ui-deitada .room .room-status {
+      .ui-deitada .room:not(.room-settings) .room-summary,
+      .ui-deitada .room:not(.room-settings) .room-status {
         max-width: 160px;
         text-align: center;
       }
-      .ui-deitada .room h1 {
+      .ui-deitada .room:not(.room-settings) h1 {
         justify-self: start;
         font-size: 16px;
       }
-      .ui-deitada .room .room-gear {
+      .ui-deitada .room:not(.room-settings) .room-gear {
         top: -3px;
         right: 0;
       }
