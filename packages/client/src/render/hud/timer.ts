@@ -1,5 +1,5 @@
 /**
- * Relogio da rodada numa placa no topo (vermelha na morte subita), contagem
+ * Relogio da rodada numa placa no topo (vermelha com a arena fechando), contagem
  * regressiva com os digitos grandes e aviso central sobre o banner.
  * Tudo posicionado em pixels inteiros, com origem no canto superior esquerdo,
  * para nenhum pixel de arte cair entre dois pixels de tela.
@@ -12,7 +12,7 @@ import { paraFonteHud, textoHud } from "./pixel-text.js";
 
 export const HUD_DEPTH = 100;
 const SECONDS_PER_MINUTE = 60;
-/** Tom aplicado na placa e no texto durante a morte subita. */
+/** Tom aplicado na placa e no texto enquanto a arena fecha. */
 const TINT_NORMAL = 0xffffff;
 /** Folga do texto ate a borda interna da placa do topo e do banner central. */
 export const PLACA_PADDING_X = 20;
@@ -108,7 +108,7 @@ export class TimerHud {
         this.setCentro("");
         return;
       case MatchPhase.SuddenDeath:
-        this.setTopo(`${prefix}  MORTE SUBITA  ${clock}`, perigo);
+        this.setTopo(`${prefix}  ${state.duel ? "MORTE SUBITA" : "ARENA FECHANDO"}  ${clock}`, perigo);
         break;
       default:
         this.setTopo(`${prefix}  ${clock}`, false);

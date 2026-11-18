@@ -14,7 +14,7 @@ export function corCss(cor: number): string {
   return `#${cor.toString(16).padStart(6, "0")}`;
 }
 
-/** Coral de perigo: relogio na morte subita e aviso de eliminado. */
+/** Coral de perigo: relogio com a arena fechando e aviso de eliminado. */
 export const TINT_PERIGO = 0xff7a6a;
 
 /**

@@ -8,6 +8,7 @@ const NO_NICKNAMES: Nicknames = new Map();
 export interface SeriesInfo {
   readonly round: number;
   readonly finished: boolean;
+  readonly duel: boolean;
   readonly winnerId: string | null;
 }
 
@@ -21,7 +22,7 @@ function nameOf(state: MatchState, id: string, names: Nicknames): string {
 }
 
 export function roundLabel(series: SeriesInfo): string {
-  return `RODADA ${series.round}/${BALANCE.match.maxRounds}`;
+  return series.duel ? "DUELO" : `RODADA ${series.round}/${BALANCE.match.maxRounds}`;
 }
 
 export function roundResult(state: MatchState, localId: string, names: Nicknames = NO_NICKNAMES): string {
