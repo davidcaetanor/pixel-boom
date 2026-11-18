@@ -16,7 +16,9 @@ import {
   canPickCharacter,
   createFixedLoop,
   createMatchState,
+  NICKNAME_TAKEN_CODE,
   firstFreeCharacter,
+  isNicknameTaken,
   recordRound,
   step,
   type FixedLoopState,
@@ -92,18 +94,26 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     writeWaiting(this.state);
   }
 
-  /** Ninguem entra sem apelido: recusa a reserva antes de ocupar uma vaga. */
+  /** Ninguem entra sem apelido proprio: recusa antes de ocupar uma vaga. */
   override onAuth(_client: Client, options: unknown): true {
-    if (parseJoinNickname(options) === null) {
+    const nickname = parseJoinNickname(options);
+    if (nickname === null) {
       throw new ServerError(BAD_REQUEST, "apelido obrigatorio");
+    }
+    if (isNicknameTaken(this.nicknames(), nickname)) {
+      throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
     }
     return true;
   }
 
   override onJoin(client: Client, options: unknown): void {
+    const nickname = parseJoinNickname(options) ?? "";
+    // Duas entradas simultaneas podem passar juntas pelo onAuth; aqui a sala ja esta atualizada.
+    if (isNicknameTaken(this.nicknames(), nickname)) {
+      throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
+    }
     this.queues.set(client.sessionId, new InputQueue());
     const character = firstFreeCharacter(this.charactersExcept(client.sessionId)) ?? 0;
-    const nickname = parseJoinNickname(options) ?? "";
     this.members.set(client.sessionId, { character, order: this.nextOrder, nickname });
     this.nextOrder += 1;
     if (this.hostId === "") {
@@ -127,6 +137,10 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
         ),
       };
     }
+  }
+
+  private nicknames(): string[] {
+    return [...this.members.values()].map((m) => m.nickname);
   }
 
   private charactersExcept(id: string): number[] {
