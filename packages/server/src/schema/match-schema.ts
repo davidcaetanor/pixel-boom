@@ -10,6 +10,7 @@ export class PlayerSchema extends Schema {
   @type("string") facing = "south";
   @type("boolean") alive = true;
   @type("float64") speed = 0;
+  @type("float32") speedBoost = 0;
   @type("uint8") maxBombs = 0;
   @type("uint8") range = 0;
   @type("uint8") roundsWon = 0;

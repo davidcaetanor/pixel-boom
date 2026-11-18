@@ -56,6 +56,7 @@ export function writeMatch(
     s.facing = p.facing;
     s.alive = p.alive;
     s.speed = p.speed;
+    s.speedBoost = p.speedBoost;
     s.maxBombs = p.maxBombs;
     s.range = p.range;
     s.roundsWon = p.roundsWon;

@@ -25,6 +25,7 @@ interface RemotePlayer {
   facing: string;
   alive: boolean;
   speed: number;
+  speedBoost: number;
   maxBombs: number;
   range: number;
   roundsWon: number;
@@ -144,6 +145,7 @@ export function readSnapshot(remote: RemoteState): Snapshot {
       facing: p.facing as Facing,
       alive: p.alive,
       speed: p.speed,
+      speedBoost: p.speedBoost,
       maxBombs: p.maxBombs,
       range: p.range,
       bombsPlaced: 0,
