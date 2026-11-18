@@ -1,6 +1,6 @@
 /**
- * Entrada na sala: cria uma nova ou entra por codigo. Com `?sala=CODIGO` na
- * URL entra direto. Ao conectar, o codigo vai para a URL, que vira o link de
+ * Menu de entrada: cria uma sala ou entra por codigo. Com `?sala=CODIGO` na
+ * URL entra direto, com o apelido salvo. Ao conectar, o codigo vai para a URL, que vira o link de
  * convite, e a partida abre.
  */
 import Phaser from "phaser";
@@ -19,21 +19,21 @@ export class LobbyScene extends Phaser.Scene {
 
   create(): void {
     this.panel = new LobbyPanel({
-      onCreate: () => this.connect(createRoom()),
-      onJoin: (raw) => {
+      onCreate: (nickname) => this.connect(createRoom(nickname)),
+      onJoin: (raw, nickname) => {
         const code = parseRoomCode(raw);
         if (code === null) {
           this.panel?.showError("Codigo invalido");
           return;
         }
-        this.connect(joinRoom(code));
+        this.connect(joinRoom(code, nickname));
       },
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.panel?.dispose());
 
     const fromUrl = parseRoomCode(new URLSearchParams(window.location.search).get(ROOM_PARAM) ?? "");
     if (fromUrl !== null) {
-      this.connect(joinRoom(fromUrl));
+      this.connect(joinRoom(fromUrl, this.panel.nickname()));
     }
   }
 

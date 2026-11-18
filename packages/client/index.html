@@ -157,6 +157,66 @@
         margin: 0;
         color: #ff5a4a;
       }
+      /* Foco de teclado: o mesmo destaque do mouse nao diz onde o Enter vai cair. */
+      .lobby button:focus-visible:not(:disabled) {
+        outline: none;
+        border-image-source: url(/ui-botao-foco.png);
+      }
+      .lobby input:focus-visible {
+        border-image-source: url(/ui-slot-selecionado.png);
+      }
+      .lobby-tela {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .lobby-tela[hidden] {
+        display: none;
+      }
+      .lobby-tela > button {
+        min-width: 112px;
+      }
+      .lobby-campo {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .lobby .lobby-apelido {
+        width: 8ch;
+      }
+      .lobby h2 {
+        margin: 0;
+        font-size: inherit;
+      }
+      .lobby p {
+        margin: 0;
+      }
+      .lobby-tela p {
+        max-width: 192px;
+        text-align: center;
+      }
+      .lobby-hint {
+        color: #9a94a8;
+      }
+      .lobby-ajuda {
+        display: grid;
+        grid-template-columns: auto auto;
+        align-items: center;
+        gap: 4px 8px;
+        margin: 0;
+      }
+      .lobby-ajuda dt {
+        justify-self: end;
+      }
+      .lobby-ajuda dd {
+        margin: 0;
+      }
+      .lobby-ajuda img {
+        display: block;
+        width: 16px;
+        height: 16px;
+      }
     </style>
   </head>
   <body>
