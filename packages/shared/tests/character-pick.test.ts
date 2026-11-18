@@ -7,7 +7,7 @@ import {
 } from "../src/rules/character-pick.js";
 
 describe("escolha de personagem", () => {
-  it("o elenco cobre todas as vagas da sala", () => {
+  it("o elenco tem um personagem por vaga da maior sala", () => {
     expect(CHARACTER_COUNT).toBe(8);
   });
 

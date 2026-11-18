@@ -1,10 +1,10 @@
 /**
  * Escolha de personagem na sala de espera: um personagem por jogador, sem
- * repeticao. O elenco tem um personagem por vaga da sala.
+ * repeticao, valendo para humanos e bots.
  */
 import { BALANCE } from "../config/balance.js";
 
-export const CHARACTER_COUNT = BALANCE.net.maxClientsPerRoom;
+export const CHARACTER_COUNT = BALANCE.room.castSize;
 
 export function isCharacterIndex(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < CHARACTER_COUNT;

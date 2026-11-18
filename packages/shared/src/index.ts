@@ -23,6 +23,7 @@ export * from "./rules/explosion-propagation.js";
 export * from "./rules/grid-collision.js";
 export * from "./rules/map-generation.js";
 export * from "./rules/pickup.js";
+export * from "./rules/room-admin.js";
 export * from "./rules/series.js";
 export * from "./rules/speed-boost.js";
 export * from "./rules/spawn-assignment.js";

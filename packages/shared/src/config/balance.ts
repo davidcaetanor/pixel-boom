@@ -56,6 +56,14 @@ export const BALANCE = {
     deltaClampMs: 100,
   },
 
+  /** Sala de espera. A capacidade conta humanos e bots. */
+  room: {
+    capacityMin: 2,
+    capacityMax: 8,
+    /** Personagens do elenco; todos ficam disponiveis em qualquer capacidade. */
+    castSize: 8,
+  },
+
   /** Rede. */
   net: {
     patchesPerSecond: 30,
