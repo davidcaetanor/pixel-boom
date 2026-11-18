@@ -20,10 +20,6 @@ export function botNickname(character: number, humanNicknames: Iterable<string>)
   }
 }
 
-export function canAddBot(occupants: number, capacity: number): boolean {
-  return occupants < capacity;
-}
-
 export function otherDifficulty(difficulty: BotDifficulty): BotDifficulty {
   return difficulty === BotDifficulty.Normal ? BotDifficulty.Hard : BotDifficulty.Normal;
 }

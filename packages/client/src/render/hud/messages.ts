@@ -1,11 +1,12 @@
 /** Textos do HUD derivados do estado, sem acesso a render. */
-import { BALANCE, MatchPhase, displayName, type MatchState, type Player } from "@pixelboom/shared";
+import { MatchPhase, displayName, type MatchState, type Player } from "@pixelboom/shared";
 
 export type Nicknames = ReadonlyMap<string, string>;
 
 const NO_NICKNAMES: Nicknames = new Map();
 
 export interface SeriesInfo {
+  readonly bestOf: number;
   readonly round: number;
   readonly finished: boolean;
   readonly duel: boolean;
@@ -22,7 +23,7 @@ function nameOf(state: MatchState, id: string, names: Nicknames): string {
 }
 
 export function roundLabel(series: SeriesInfo): string {
-  return series.duel ? "DUELO" : `RODADA ${series.round}/${BALANCE.match.maxRounds}`;
+  return series.duel ? "DUELO" : `RODADA ${series.round}/${series.bestOf}`;
 }
 
 export function roundResult(state: MatchState, localId: string, names: Nicknames = NO_NICKNAMES): string {

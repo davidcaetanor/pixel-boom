@@ -127,8 +127,9 @@ export const BALANCE = {
 
   /** Formato da partida. */
   match: {
-    roundsToWin: 3,
-    maxRounds: 5,
+    /** Formatos de serie que o anfitriao pode escolher, em rodadas. */
+    bestOfOptions: [1, 3, 5, 7],
+    bestOfDefault: 5,
   },
 } as const;
 

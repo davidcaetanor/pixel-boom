@@ -5,13 +5,14 @@
  * Eliminados ficam esmaecidos. Posicoes em pixels inteiros.
  */
 import type Phaser from "phaser";
-import { ARENA_ROWS, BALANCE, LOGICAL_WIDTH, TILE_SIZE, shortName, type Player } from "@pixelboom/shared";
+import { ARENA_ROWS, BALANCE, LOGICAL_WIDTH, TILE_SIZE, roundsToWin, shortName, type Player } from "@pixelboom/shared";
 import { TEXTURA } from "../atlas/atlas-registry.js";
 import { corDoSlot } from "../palette.js";
 import { textoHud } from "./pixel-text.js";
 import { playerName, type Nicknames } from "./messages.js";
 
 const HUD_DEPTH = 100;
+const MAX_ESTRELAS = roundsToWin(Math.max(...BALANCE.match.bestOfOptions));
 const SLOTS = BALANCE.net.maxClientsPerRoom;
 const CELL_WIDTH = LOGICAL_WIDTH / SLOTS;
 const CENTER_Y = (ARENA_ROWS - 1) * TILE_SIZE + TILE_SIZE / 2;
@@ -40,14 +41,15 @@ export class Scoreboard {
       const left = slot * CELL_WIDTH + SWATCH_SIZE;
       const swatch = scene.add.image(left, CENTER_Y, TEXTURA.uiBadge).setTint(corDoSlot(slot)).setDepth(HUD_DEPTH);
       const text = textoHud(scene, left + SWATCH_SIZE, TEXTO_TOPO, "").setDepth(HUD_DEPTH);
-      const estrelas = Array.from({ length: BALANCE.match.roundsToWin }, () =>
+      const estrelas = Array.from({ length: MAX_ESTRELAS }, () =>
         scene.add.image(0, TEXTO_TOPO, TEXTURA.uiVitoriaVazia).setOrigin(0, 0).setDepth(HUD_DEPTH),
       );
       this.entries.push({ swatch, text, estrelas });
     }
   }
 
-  render(players: readonly Player[], names: Nicknames): void {
+  render(players: readonly Player[], names: Nicknames, bestOf: number): void {
+    const needed = roundsToWin(bestOf);
     const bySlot = new Map(players.map((p) => [p.slot, p]));
     const columns = Math.max(0, ...players.map((p) => p.slot + 1));
     const offset = ((SLOTS - columns) * CELL_WIDTH) / 2;
@@ -56,9 +58,7 @@ export class Scoreboard {
       const visible = player !== undefined;
       entry.swatch.setVisible(visible);
       entry.text.setVisible(visible);
-      for (const estrela of entry.estrelas) {
-        estrela.setVisible(visible);
-      }
+      entry.estrelas.forEach((estrela, i) => estrela.setVisible(visible && i < needed));
       if (player === undefined) {
         return;
       }

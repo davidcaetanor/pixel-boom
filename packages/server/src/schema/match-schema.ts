@@ -62,6 +62,8 @@ export class MatchSchema extends Schema {
   @type("uint8") capacity = 0;
   /** Sala contra bot: fechada para outros humanos. */
   @type("boolean") closed = false;
+  /** Rodadas da serie configurada, em melhor de N. */
+  @type("uint8") bestOf = 0;
   @type({ map: MemberSchema }) members = new MapSchema<MemberSchema>();
   /** Rodada atual da serie, a partir de 1. */
   @type("uint8") round = 0;

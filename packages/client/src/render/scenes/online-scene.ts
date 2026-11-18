@@ -6,7 +6,6 @@
  */
 import Phaser from "phaser";
 import {
-  BotDifficulty,
   KICKED_CODE,
   IDLE_INPUT,
   MatchPhase,
@@ -21,13 +20,16 @@ import {
 import type { Room } from "@colyseus/sdk";
 import { MatchSounds } from "../../audio/match-sounds.js";
 import { SFX, playSfx } from "../../audio/sfx.js";
+import { announceBack } from "../../audio/ui-sounds.js";
 import { KeyboardSource } from "../../input/keyboard-source.js";
 import { SnapshotBuffer } from "../../net/interpolation.js";
 import { predictionFor, type LocalPrediction } from "../../net/prediction.js";
 import { activeRoom, leaveRoom } from "../../net/room-client.js";
 import { nicknamesOf, readSnapshot, type Lobby, type MatchSnapshot, type RemoteState } from "../../net/snapshot.js";
 import { KICKED_NOTICE } from "../../ui/labels.js";
+import { PauseMenu } from "../../ui/pause-menu.js";
 import { RoomPanel } from "../../ui/room-panel.js";
+import { RoomSettings } from "../../ui/room-settings.js";
 import { forgetInvite } from "./lobby-scene.js";
 import { comemora, onlineBanner, roundLabel } from "../hud/messages.js";
 import { paraFonteHud, textoHud } from "../hud/pixel-text.js";
@@ -72,6 +74,8 @@ export class OnlineScene extends Phaser.Scene {
   private latest: MatchSnapshot | null = null;
   private waitingLobby: Lobby | null = null;
   private panel: RoomPanel | null = null;
+  private settings: RoomSettings | null = null;
+  private pause: PauseMenu | null = null;
   private views: MatchViews | null = null;
   private sounds: MatchSounds | null = null;
   /** Quantos estavam na sala no ultimo desenho da espera, para soar a cada entrada. */
@@ -124,10 +128,20 @@ export class OnlineScene extends Phaser.Scene {
       }
     };
     document.addEventListener("visibilitychange", onHidden);
+    const onEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape" && this.latest !== null) {
+        event.preventDefault();
+        this.togglePause();
+      }
+    };
+    window.addEventListener("keydown", onEscape);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       room.onStateChange.remove(onState);
       room.onLeave.remove(onKicked);
       document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("keydown", onEscape);
+      this.pause?.dispose();
+      this.pause = null;
       this.keyboard.dispose();
       this.closePanel();
     });
@@ -185,7 +199,7 @@ export class OnlineScene extends Phaser.Scene {
 
     const ticks = advance(this.loop, deltaMs / MS_PER_SECOND);
     for (let i = 0; i < ticks; i += 1) {
-      this.send(this.keyboard.read());
+      this.send(this.pause?.isOpen === true ? IDLE_INPUT : this.keyboard.read());
     }
     this.draw(snapshot, time, deltaMs / MS_PER_SECOND);
   }
@@ -230,7 +244,7 @@ export class OnlineScene extends Phaser.Scene {
 
     this.timer.render(state, `SALA ${this.room.roomId}  ${roundLabel(series)}`, onlineBanner(state, series, localId, names));
     this.status.setText("");
-    this.scoreboard.render(state.players, names);
+    this.scoreboard.render(state.players, names, series.bestOf);
     const self = state.players.find((p) => p.id === localId);
     this.attributes.render(self, this.timer.bordaDireitaTopo);
     if (selfView !== undefined) {
@@ -247,9 +261,8 @@ export class OnlineScene extends Phaser.Scene {
     this.panel ??= new RoomPanel({
       onPick: (character) => this.room.send("character", { index: character }),
       onStart: () => this.room.send("start"),
-      onCapacity: (value) => this.room.send("capacity", { value }),
       onKick: (id) => this.room.send("kick", { id }),
-      onAddBot: () => this.room.send("addBot", { difficulty: BotDifficulty.Normal }),
+      onSettings: () => this.settings?.open(),
       onBotDifficulty: (id) => this.room.send("botDifficulty", { id }),
       onBotCharacter: (id, index) => this.room.send("botCharacter", { id, index }),
       onLeave: () => this.backToMenu(),
@@ -259,8 +272,42 @@ export class OnlineScene extends Phaser.Scene {
       localId: this.room.sessionId,
       hostId: lobby.hostId,
       capacity: lobby.capacity,
+      bestOf: lobby.bestOf,
       closed: lobby.closed,
       members: lobby.members,
+    });
+    this.settings ??= new RoomSettings({
+      onCapacity: (value) => this.room.send("capacity", { value }),
+      onBots: (value) => this.room.send("bots", { value }),
+      onBestOf: (value) => this.room.send("bestOf", { value }),
+    });
+    const bots = lobby.members.filter((m) => m.bot).length;
+    this.settings.render({ capacity: lobby.capacity, humans: lobby.members.length - bots, bots, bestOf: lobby.bestOf });
+    if (lobby.hostId !== this.room.sessionId) {
+      this.settings.close();
+    }
+  }
+
+  private togglePause(): void {
+    const snapshot = this.latest;
+    if (snapshot === null) {
+      return;
+    }
+    this.pause ??= new PauseMenu(() => this.backToMenu());
+    if (this.pause.isOpen) {
+      announceBack();
+      this.pause.close();
+      return;
+    }
+    const localId = this.room.sessionId;
+    const self = snapshot.state.players.find((p) => p.id === localId);
+    const { series, lobby } = snapshot;
+    const heir =
+      lobby.hostId === localId ? (lobby.members.find((m) => !m.bot && m.id !== localId)?.nickname ?? null) : null;
+    this.pause.open({
+      spectating: self === undefined || !self.alive,
+      summary: series.duel ? "Duelo" : `Rodada ${series.round} de ${series.bestOf}`,
+      heir,
     });
   }
 
@@ -273,6 +320,8 @@ export class OnlineScene extends Phaser.Scene {
   private closePanel(): void {
     this.panel?.dispose();
     this.panel = null;
+    this.settings?.dispose();
+    this.settings = null;
   }
 
   private createViews(state: MatchState, lobby: Lobby, localId: string): MatchViews {

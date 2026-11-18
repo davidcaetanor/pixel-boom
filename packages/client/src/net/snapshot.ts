@@ -51,6 +51,7 @@ export interface RemoteState {
   hostId: string;
   capacity: number;
   closed: boolean;
+  bestOf: number;
   members: { forEach(cb: (m: RemoteMember) => void): void };
   round: number;
   seriesFinished: boolean;
@@ -64,6 +65,7 @@ export interface RemoteState {
 }
 
 export interface SeriesView {
+  readonly bestOf: number;
   readonly round: number;
   readonly finished: boolean;
   readonly duel: boolean;
@@ -87,6 +89,7 @@ export interface Lobby {
   readonly capacity: number;
   /** Sala contra bot. */
   readonly closed: boolean;
+  readonly bestOf: number;
   /** Em ordem de entrada. */
   readonly members: readonly Member[];
 }
@@ -124,6 +127,7 @@ function readLobby(remote: RemoteState): Lobby {
     hostId: remote.hostId,
     capacity: remote.capacity,
     closed: remote.closed,
+    bestOf: remote.bestOf,
     members,
   };
 }
@@ -194,6 +198,7 @@ export function readSnapshot(remote: RemoteState): Snapshot {
     rng: 0,
   };
   const series: SeriesView = {
+    bestOf: remote.bestOf,
     round: remote.round,
     finished: remote.seriesFinished,
     duel: remote.duel,
