@@ -17,6 +17,11 @@ export const TEXTURA = {
   uiFonte: "ui-fonte",
   uiVitoria: "ui-vitoria",
   uiVitoriaVazia: "ui-vitoria-vazia",
+  uiIconeBomba: "ui-icone-bomba",
+  uiIconeAlcance: "ui-icone-alcance",
+  uiIconeVelocidade: "ui-icone-velocidade",
+  uiBarraMoldura: "ui-barra-moldura",
+  uiBarraPreenchimento: "ui-barra-preenchimento",
 } as const;
 
 /**

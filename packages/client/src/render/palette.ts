@@ -14,6 +14,9 @@ export function corCss(cor: number): string {
   return `#${cor.toString(16).padStart(6, "0")}`;
 }
 
+/** Coral de perigo: relogio na morte subita e aviso de eliminado. */
+export const TINT_PERIGO = 0xff7a6a;
+
 /**
  * Tint do texto de coleta ("+1 BOMBA") por item, sobre a fonte creme do HUD.
  * Bomba fica creme: preto nao se le sobre a grama.

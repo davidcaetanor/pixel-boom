@@ -48,11 +48,7 @@ export function onlineBanner(
   if (state.phase === MatchPhase.Finished) {
     return series.finished ? seriesResult(state, series, localId, names) : roundResult(state, localId, names);
   }
-  const self = state.players.find((p) => p.id === localId);
-  if (self === undefined) {
-    return "Assistindo\nvoce entra na proxima rodada";
-  }
-  return self.alive ? null : "Eliminado\nassistindo";
+  return null;
 }
 
 /** O jogador venceu a rodada que acabou de terminar e deve comemorar. */

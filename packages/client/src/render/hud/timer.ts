@@ -7,15 +7,15 @@
 import type Phaser from "phaser";
 import { LOGICAL_HEIGHT, LOGICAL_WIDTH, MatchPhase, type MatchState } from "@pixelboom/shared";
 import { BANNER_BORDA, DIGITOS, TEXTURA } from "../atlas/atlas-registry.js";
+import { TINT_PERIGO } from "../palette.js";
 import { paraFonteHud, textoHud } from "./pixel-text.js";
 
-const HUD_DEPTH = 100;
+export const HUD_DEPTH = 100;
 const SECONDS_PER_MINUTE = 60;
 /** Tom aplicado na placa e no texto durante a morte subita. */
-const TINT_PERIGO = 0xff7a6a;
 const TINT_NORMAL = 0xffffff;
 /** Folga do texto ate a borda interna da placa do topo e do banner central. */
-const PLACA_PADDING_X = 20;
+export const PLACA_PADDING_X = 20;
 const PLACA_TOPO_Y = 0;
 /** Altura das placas do topo: a faixa da borda mais 4 px de respiro. */
 export const PLACA_TOPO_ALTURA = 36;
@@ -46,7 +46,8 @@ function relogio(segundos: number): string {
   return `${min}:${seg.toString().padStart(2, "0")}`;
 }
 
-function placa(scene: Phaser.Scene): Phaser.GameObjects.NineSlice {
+/** Placa do topo no estilo do relogio, para as outras placas do HUD. */
+export function placa(scene: Phaser.Scene): Phaser.GameObjects.NineSlice {
   return scene.add
     .nineslice(
       0,
