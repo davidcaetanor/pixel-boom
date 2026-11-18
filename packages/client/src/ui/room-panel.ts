@@ -81,9 +81,6 @@ export class RoomPanel {
     this.gear.title = "Configuracoes da sala";
     this.gear.setAttribute("aria-label", this.gear.title);
     this.gear.addEventListener("click", () => actions.onSettings());
-    const gearIcon = document.createElement("span");
-    gearIcon.className = "room-gear-icon";
-    this.gear.append(gearIcon);
     this.summary = document.createElement("p");
     this.summary.className = "room-summary";
 

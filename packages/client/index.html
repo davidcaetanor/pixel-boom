@@ -117,33 +117,22 @@
       .room h1 {
         line-height: normal;
       }
-      /* No canto interno do painel, fora do fluxo: a posicao nao depende do titulo nem da sala. */
+      /* Centrada na linha do titulo: alinhada pelo topo, encostaria nos cartoes da sala contra bot. */
       .lobby button.room-gear {
         box-sizing: content-box;
         position: absolute;
-        top: 0;
+        top: -3px;
         right: 0;
         width: 28px;
         height: 28px;
         padding: 0;
-        border: 10px solid transparent;
-        border-image: url(/ui-slot.png) 10 fill / 10px stretch;
-      }
-      .room-gear-icon {
-        display: block;
-        width: 28px;
-        height: 28px;
+        border: none;
+        border-image: none;
         background: url(/ui-engrenagem.png) no-repeat;
       }
       .lobby button.room-gear:hover:not(:disabled),
       .lobby button.room-gear:focus-visible:not(:disabled) {
-        border-image-source: url(/ui-slot-hover.png);
-      }
-      .lobby button.room-gear:active:not(:disabled) {
-        border-image-source: url(/ui-slot-selecionado.png);
-      }
-      .lobby button.room-gear:hover .room-gear-icon,
-      .lobby button.room-gear:focus-visible .room-gear-icon {
+        border-image: none;
         background-image: url(/ui-engrenagem-foco.png);
       }
       .lobby.room-settings h2,
