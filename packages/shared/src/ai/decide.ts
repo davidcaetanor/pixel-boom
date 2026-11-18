@@ -3,6 +3,7 @@ import { IDLE_INPUT, type AxisIntent, type InputCommand } from "../commands/inpu
 import { CELL_CENTER, cellIndex, cellX, cellY } from "../config/arena.js";
 import { BALANCE } from "../config/balance.js";
 import type { Bomb } from "../domain/bomb.js";
+import { CellKind } from "../domain/cell.js";
 import { MatchPhase, type MatchState } from "../domain/match-state.js";
 import type { Player } from "../domain/player.js";
 import { bombAt, canPlaceBomb, createBomb, playerCell } from "../rules/bomb-placement.js";
@@ -49,6 +50,8 @@ interface View {
   readonly danger: DangerMap;
   readonly paths: Reach;
   readonly enemies: readonly Player[];
+  /** Sem caixas no mapa, a unica forma de decidir a rodada e acertar alguem. */
+  readonly hunting: boolean;
 }
 
 const MARGIN = BALANCE.ai.flameMargin;
@@ -147,6 +150,12 @@ function targetScore(view: View, cell: number, enemyPull: number): number {
   if (Number.isFinite(nearest)) {
     score -= enemyPull * Math.max(nearest, ai.enemyComfortCells);
   }
+  if (view.hunting && me.bombsPlaced < me.maxBombs) {
+    const flames = new Set(blastFrom(state, cell, me.range).cells);
+    if (view.enemies.some((e) => flames.has(cellOf(e)))) {
+      score += ai.huntLineValue;
+    }
+  }
   return score;
 }
 
@@ -212,6 +221,7 @@ interface DifficultyParams {
   readonly enemyPull: number;
   readonly pressure: number;
   readonly thinkSeconds: number;
+  readonly huntChance: number;
 }
 
 /** Arena fechando ou duelo: esperar nao adianta, o bot parte para cima. */
@@ -252,6 +262,7 @@ export function decideBot(
     danger,
     paths: pathsFrom(state, bombs, danger, me),
     enemies: state.players.filter((p) => p.alive && p.id !== me.id),
+    hunting: !state.grid.cells.includes(CellKind.Crate),
   };
 
   if (!isSafeSpot(danger, view.cell, 0, MARGIN)) {
@@ -274,10 +285,11 @@ export function decideBot(
   const plan = planBomb(view);
   if (plan !== null) {
     const [trap, afterTrap] = roll(rng, params.attackChance, window);
-    const [poke, afterPoke] = roll(afterTrap, params.pokeChance, window);
+    const [poke, afterPoke] = roll(afterTrap, view.hunting ? params.huntChance : params.pokeChance, window);
     rng = afterPoke;
     const crateSpot = plan.crates > 0 && memory.target === view.cell;
-    if (crateSpot || (plan.trapsEnemy && trap) || (plan.hitsEnemy && poke)) {
+    const strike = (plan.trapsEnemy && (trap || view.hunting)) || (plan.hitsEnemy && poke);
+    if (crateSpot || strike) {
       // O step move antes de soltar a bomba; parado, ela cai na celula avaliada.
       return {
         input: { ...IDLE_INPUT, bomb: true },
