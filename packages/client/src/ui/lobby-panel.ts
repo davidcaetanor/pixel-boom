@@ -1,14 +1,15 @@
 /**
  * Menu de entrada sobreposto ao canvas: tela inicial com apelido, jogo online
- * (criar ou entrar por codigo) e como jogar. Navega por teclado: setas movem o
- * foco, Enter confirma e Esc volta para a tela inicial. Nao conhece rede nem
- * Phaser.
+ * (criar ou entrar por codigo) e como jogar. O apelido e obrigatorio. Navega
+ * por teclado: setas movem o foco, Enter confirma e Esc volta para a tela
+ * inicial. Nao conhece rede nem Phaser.
  */
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, ROOM_CODE_LENGTH, parseNickname } from "@pixelboom/shared";
+import { moveFocus } from "./keyboard-nav.js";
 
 export interface LobbyActions {
-  onCreate(nickname: string | null): void;
-  onJoin(code: string, nickname: string | null): void;
+  onCreate(nickname: string): void;
+  onJoin(code: string, nickname: string): void;
 }
 
 type Screen = "inicio" | "online" | "ajuda";
@@ -66,6 +67,9 @@ export class LobbyPanel {
   private readonly codeInput: HTMLInputElement;
   private readonly screens: Record<Screen, HTMLElement>;
   private current: Screen = "inicio";
+  /** Codigo do convite aguardando um apelido valido para entrar. */
+  private pendingCode: string | null = null;
+  private readonly playButton: HTMLButtonElement;
 
   constructor(
     private readonly actions: LobbyActions,
@@ -81,6 +85,12 @@ export class LobbyPanel {
     this.nicknameInput.autocomplete = "off";
     this.nicknameInput.spellcheck = false;
     this.nicknameInput.value = loadNickname();
+    this.nicknameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.play();
+      }
+    });
 
     this.codeInput = document.createElement("input");
     this.codeInput.placeholder = "Codigo";
@@ -90,6 +100,8 @@ export class LobbyPanel {
 
     this.error = document.createElement("p");
     this.error.className = "lobby-error";
+
+    this.playButton = button("Jogar online", () => this.play());
 
     this.screens = {
       inicio: this.buildInicio(),
@@ -111,7 +123,18 @@ export class LobbyPanel {
     return parseNickname(this.nicknameInput.value);
   }
 
+  /** Convite aberto sem apelido salvo: pede o apelido e entra direto nessa sala. */
+  awaitNickname(code: string): void {
+    this.pendingCode = code;
+    this.playButton.textContent = "Entrar na sala";
+    this.show("inicio");
+    this.error.textContent = `Escolha um apelido para entrar na sala ${code}`;
+    this.error.classList.add("is-info");
+    this.nicknameInput.focus();
+  }
+
   showError(message: string): void {
+    this.error.classList.remove("is-info");
     this.error.textContent = message;
   }
 
@@ -146,9 +169,8 @@ export class LobbyPanel {
     screen.append(
       title,
       nickname,
-      button("Jogar online", () => this.confirmNickname() && this.show("online")),
+      this.playButton,
       button("Como jogar", () => this.show("ajuda")),
-      hint("setas escolhem  |  Enter confirma"),
     );
     return screen;
   }
@@ -161,14 +183,22 @@ export class LobbyPanel {
     form.append(this.codeInput, button("Entrar", () => form.requestSubmit()));
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      this.actions.onJoin(this.codeInput.value, this.nickname());
+      const nickname = this.confirmNickname();
+      if (nickname !== null) {
+        this.actions.onJoin(this.codeInput.value, nickname);
+      }
     });
 
     screen.append(
-      button("Criar sala", () => this.actions.onCreate(this.nickname())),
+      button("Criar sala", () => {
+        const nickname = this.confirmNickname();
+        if (nickname !== null) {
+          this.actions.onCreate(nickname);
+        }
+      }),
       hint("ou entre com um codigo"),
       form,
-      hint("Esc volta"),
+      button("Voltar", () => this.show("inicio")),
     );
     return screen;
   }
@@ -207,18 +237,30 @@ export class LobbyPanel {
     return screen;
   }
 
-  /** Campo vazio entra sem apelido; texto fora do formato bloqueia com aviso. */
-  private confirmNickname(): boolean {
-    const raw = this.nicknameInput.value.trim();
-    const parsed = parseNickname(raw);
-    if (raw !== "" && parsed === null) {
+  private play(): void {
+    const nickname = this.confirmNickname();
+    if (nickname === null) {
+      return;
+    }
+    if (this.pendingCode !== null) {
+      this.actions.onJoin(this.pendingCode, nickname);
+      return;
+    }
+    this.show("online");
+  }
+
+  /** Apelido obrigatorio: vazio ou fora do formato volta para o campo com aviso. */
+  private confirmNickname(): string | null {
+    const nickname = this.nickname();
+    if (nickname === null) {
+      this.show("inicio");
       this.showError(NICKNAME_ERROR);
       this.nicknameInput.focus();
-      return false;
+      return null;
     }
-    this.nicknameInput.value = parsed ?? "";
-    saveNickname(this.nicknameInput.value);
-    return true;
+    this.nicknameInput.value = nickname;
+    saveNickname(nickname);
+    return nickname;
   }
 
   private show(screen: Screen): void {
@@ -242,17 +284,6 @@ export class LobbyPanel {
       this.show("inicio");
       return;
     }
-    const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
-    if (step === 0) {
-      return;
-    }
-    const items = this.focusables();
-    if (items.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    const index = items.indexOf(document.activeElement as HTMLElement);
-    const next = index === -1 ? 0 : (index + step + items.length) % items.length;
-    items[next]?.focus();
+    moveFocus(event, this.focusables());
   }
 }
