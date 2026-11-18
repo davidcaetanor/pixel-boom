@@ -83,6 +83,8 @@ export const BALANCE = {
     travelCost: 1,
     /** Abaixo desta distancia, chegar mais perto nao vale mais nada. */
     enemyComfortCells: 2,
+    /** Com a arena fechando, chances e atracao multiplicadas; chance limitada a 1 por segundo. */
+    closingAggression: 3,
     difficulty: {
       normal: {
         /** Bomba inimiga mais nova que isto ainda nao foi notada. */

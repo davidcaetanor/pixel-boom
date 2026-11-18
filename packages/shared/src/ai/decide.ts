@@ -203,6 +203,27 @@ function hold(memory: BotMemory, target: number, dt: number): number {
   return target === memory.target ? Math.max(memory.hold - dt, 0) : BALANCE.ai.targetHoldTime;
 }
 
+interface DifficultyParams {
+  readonly reactionTime: number;
+  readonly attackChance: number;
+  readonly pokeChance: number;
+  readonly enemyPull: number;
+}
+
+/** Arena fechando ou duelo: esperar nao adianta, o bot parte para cima. */
+function pressured(params: DifficultyParams, closing: boolean): DifficultyParams {
+  if (!closing) {
+    return params;
+  }
+  const k = BALANCE.ai.closingAggression;
+  return {
+    ...params,
+    attackChance: Math.min(params.attackChance * k, 1),
+    pokeChance: Math.min(params.pokeChance * k, 1),
+    enemyPull: params.enemyPull * k,
+  };
+}
+
 export function decideBot(
   state: MatchState,
   botId: string,
@@ -216,7 +237,7 @@ export function decideBot(
     return { input: IDLE_INPUT, memory: { ...memory, target: null, hold: 0 } };
   }
 
-  const params = BALANCE.ai.difficulty[difficulty];
+  const params = pressured(BALANCE.ai.difficulty[difficulty], state.phase === MatchPhase.SuddenDeath);
   const bombs = noticedBombs(state, me, params.reactionTime);
   const danger = dangerMap(state, bombs);
   const view: View = {
