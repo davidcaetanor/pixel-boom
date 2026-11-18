@@ -42,7 +42,7 @@ export function applyPowerUp(player: Player, kind: PowerUpKind): Player {
     case PowerUpKind.Range:
       return { ...player, range: Math.min(player.range + p.rangeStep, p.rangeMax) };
     case PowerUpKind.Speed:
-      return { ...player, speed: Math.min(player.speed + p.speedStep, p.speedMax) };
+      return { ...player, speed: p.speedInitial + p.speedBoost, speedBoost: p.speedBoostSeconds };
   }
 }
 

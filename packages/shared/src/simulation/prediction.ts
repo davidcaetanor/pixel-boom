@@ -10,6 +10,7 @@ import type { Grid } from "../domain/grid.js";
 import type { Player } from "../domain/player.js";
 import { solidFor } from "../rules/bomb-placement.js";
 import { movePlayer } from "../rules/movement.js";
+import { tickSpeedBoost } from "../rules/speed-boost.js";
 
 export interface PredictionWorld {
   readonly grid: Grid;
@@ -20,9 +21,10 @@ export function predictStep(world: PredictionWorld, player: Player, input: Input
   if (!player.alive) {
     return player;
   }
-  const solid = solidFor(world.grid, world.bombs, player);
-  const pos = movePlayer(solid, player, input, TICK_SECONDS);
-  return { ...player, x: pos.x, y: pos.y, facing: pos.facing ?? player.facing };
+  const boosted = tickSpeedBoost(player, TICK_SECONDS);
+  const solid = solidFor(world.grid, world.bombs, boosted);
+  const pos = movePlayer(solid, boosted, input, TICK_SECONDS);
+  return { ...boosted, x: pos.x, y: pos.y, facing: pos.facing ?? boosted.facing };
 }
 
 /** Parte do estado confirmado e reaplica as entradas ainda nao processadas. */

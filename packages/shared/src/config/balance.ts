@@ -3,8 +3,9 @@ export const BALANCE = {
   /** Progressao do jogador. Velocidade em celulas por segundo. */
   player: {
     speedInitial: 3.5,
-    speedStep: 0.4,
-    speedMax: 6,
+    /** Impulso de velocidade: soma fixa por um tempo; pegar outro so reinicia o tempo. */
+    speedBoost: 1,
+    speedBoostSeconds: 12,
 
     bombsInitial: 1,
     bombsStep: 1,

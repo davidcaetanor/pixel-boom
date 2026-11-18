@@ -19,6 +19,7 @@ import { applyDamage, flameCells } from "../rules/damage.js";
 import { generateMap } from "../rules/map-generation.js";
 import { burnPowerUps, collectPowerUps, rollDrops } from "../rules/pickup.js";
 import { closeRings } from "../rules/sudden-death.js";
+import { tickSpeedBoost } from "../rules/speed-boost.js";
 import { checkVictory } from "../rules/victory.js";
 import { movePlayer } from "../rules/movement.js";
 import { assignSpawns } from "../rules/spawn-assignment.js";
@@ -38,6 +39,7 @@ export function createPlayer(id: string, slot: number, spawnIndex = slot): Playe
     y: spawn.y + CELL_CENTER,
     facing: Facing.South,
     speed: p.speedInitial,
+    speedBoost: 0,
     maxBombs: p.bombsInitial,
     range: p.rangeInitial,
     bombsPlaced: 0,
@@ -74,6 +76,11 @@ interface TickContext {
 }
 
 type Stage = (state: MatchState, ctx: TickContext) => MatchState;
+
+const expireBoosts: Stage = (state, { dt }) => ({
+  ...state,
+  players: state.players.map((player) => tickSpeedBoost(player, dt)),
+});
 
 const movePlayers: Stage = (state, { inputs, dt }) => ({
   ...state,
@@ -173,6 +180,7 @@ const resolveVictory: Stage = (state) => {
 };
 
 const WORLD_STAGES: readonly Stage[] = [
+  expireBoosts,
   movePlayers,
   placeBombs,
   burnFuses,

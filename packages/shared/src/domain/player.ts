@@ -19,8 +19,10 @@ export interface Player {
   y: number;
   /** Direcao do ultimo movimento aceito, derivada da intencao e nao do deslocamento. */
   facing: Facing;
-  /** Celulas por segundo. */
+  /** Celulas por segundo, ja com o impulso. */
   speed: number;
+  /** Segundos restantes de impulso de velocidade; 0 sem impulso. */
+  speedBoost: number;
   /** Bombas simultaneas permitidas. */
   maxBombs: number;
   /** Alcance da explosao, em celulas. */

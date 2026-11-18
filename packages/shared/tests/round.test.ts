@@ -62,7 +62,29 @@ describe("pickup", () => {
     }
     expect(p.maxBombs).toBe(BALANCE.player.bombsMax);
     expect(p.range).toBe(BALANCE.player.rangeMax);
-    expect(p.speed).toBe(BALANCE.player.speedMax);
+    expect(p.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+  });
+
+  it("impulso de velocidade nao acumula e outro reinicia o tempo", () => {
+    let p = applyPowerUp(createPlayer("a", 0), PowerUpKind.Speed);
+    p = { ...p, speedBoost: 1 };
+    p = applyPowerUp(p, PowerUpKind.Speed);
+    expect(p.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+    expect(p.speedBoost).toBe(BALANCE.player.speedBoostSeconds);
+  });
+
+  it("impulso acaba no tempo e a velocidade volta a inicial", () => {
+    let s = arena({ a: [3, 1], b: [23, 11] });
+    s = { ...s, players: s.players.map((p) => (p.id === "a" ? applyPowerUp(p, PowerUpKind.Speed) : p)) };
+    const ticks = Math.round(BALANCE.player.speedBoostSeconds / TICK_SECONDS);
+    for (let i = 0; i < ticks - 1; i += 1) {
+      s = step(s, {}, TICK_SECONDS);
+    }
+    expect(s.players[0]?.speed).toBe(BALANCE.player.speedInitial + BALANCE.player.speedBoost);
+    // A soma de dt em ponto flutuante pode passar um tick do tempo exato.
+    s = step(step(s, {}, TICK_SECONDS), {}, TICK_SECONDS);
+    expect(s.players[0]?.speed).toBe(BALANCE.player.speedInitial);
+    expect(s.players[0]?.speedBoost).toBe(0);
   });
 
   it("jogador pisa e coleta", () => {
