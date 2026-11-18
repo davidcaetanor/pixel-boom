@@ -35,6 +35,7 @@ export function writeMatch(
   target.round = series.roundsPlayed + (state.phase === MatchPhase.Finished ? 0 : 1);
   target.seriesFinished = series.finished;
   target.seriesWinnerId = series.winnerId ?? "";
+  target.duel = state.duel;
   target.phase = state.phase;
   target.tick = state.tick;
   target.elapsed = state.elapsed;
@@ -116,6 +117,7 @@ export function writeWaiting(target: MatchSchema): void {
   target.round = 0;
   target.seriesFinished = false;
   target.seriesWinnerId = "";
+  target.duel = false;
   target.winnerId = "";
   target.players.clear();
   target.bombs = new ArraySchema<BombSchema>();

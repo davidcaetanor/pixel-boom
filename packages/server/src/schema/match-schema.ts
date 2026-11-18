@@ -64,6 +64,8 @@ export class MatchSchema extends Schema {
   @type("boolean") seriesFinished = false;
   /** Vazio enquanto a serie nao terminou ou se terminou empatada. */
   @type("string") seriesWinnerId = "";
+  /** Rodada atual e um duelo de desempate entre os lideres. */
+  @type("boolean") duel = false;
   @type(["uint8"]) cells = new ArraySchema<number>();
   @type({ map: PlayerSchema }) players = new MapSchema<PlayerSchema>();
   @type([BombSchema]) bombs = new ArraySchema<BombSchema>();

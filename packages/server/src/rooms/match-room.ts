@@ -21,6 +21,7 @@ import {
   decideBot,
   NICKNAME_TAKEN_CODE,
   firstFreeCharacter,
+  keepPresentDuelists,
   isNicknameTaken,
   recordRound,
   step,
@@ -175,11 +176,14 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
 
   private startRound(): void {
     const seed = Math.floor(Math.random() * SEED_RANGE);
-    const ids = [...this.members]
+    const everyone = [...this.members]
       .sort((a, b) => a[1].order - b[1].order)
       .map(([id]) => id)
       .slice(0, BALANCE.net.maxClientsPerRoom);
-    this.match = applySeriesScore(createMatchState(seed, ids), this.series);
+    const duel = this.series.duel.length > 0;
+    const ids = duel ? everyone.filter((id) => this.series.duel.includes(id)) : everyone;
+    const slots = ids.map((id) => everyone.indexOf(id));
+    this.match = applySeriesScore(createMatchState(seed, ids, { duel, slots }), this.series);
     this.botMemory = createBotMemory(seed);
     this.finishedFor = 0;
     this.roundRecorded = false;
@@ -216,7 +220,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       return;
     }
     if (!this.roundRecorded) {
-      this.series = recordRound(this.series, this.match.winnerId);
+      this.series = recordRound(
+        this.series,
+        this.match.winnerId,
+        this.match.players.map((p) => p.id),
+      );
       this.match = applySeriesScore(this.match, this.series);
       this.roundRecorded = true;
     }
@@ -230,6 +238,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   }
 
   private nextRound(): void {
+    this.series = keepPresentDuelists(this.series, [...this.members.keys()]);
     const enoughPlayers = this.members.size >= BALANCE.net.minPlayersToStart;
     if (!this.series.finished && enoughPlayers) {
       this.startRound();
