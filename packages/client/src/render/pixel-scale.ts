@@ -4,7 +4,10 @@
  * desenha pixels de larguras diferentes e a arte parece borrada.
  *
  * Em aparelho de toque a arena divide a largura com os controles: cada lado
- * reserva a faixa do direcional, e nenhum controle cobre celula jogavel.
+ * reserva a faixa do direcional, que pode avancar sobre a sebe da borda mas
+ * nunca sobre celula jogavel. Com densidade de 2 ou mais a arena usa a escala
+ * que preenche esse espaco: num celular o pixel fracionario nao aparece, e a
+ * escala inteira deixaria a arena bem menor que a tela.
  *
  * Duas excecoes, ambas para nao perder o jogo: quando nem 1x cabe a arena
  * encolhe na escala que couber, em vez de ser cortada; e em aparelho de toque
@@ -23,6 +26,10 @@ const DIRECIONAL_ARTE = 98;
 const DIRECIONAL_ALVO_CSS = 112;
 /** Folga entre o controle e a borda da tela ou da arena, em px CSS. */
 const FOLGA_CONTROLE_CSS = 12;
+/** Largura da sebe da borda da arena, em pixels de arte: nao e jogavel. */
+const SEBE_ARTE = 32;
+/** Densidade a partir da qual a escala fracionaria nao se percebe. */
+const DENSIDADE_FRACIONARIA = 2;
 
 function dpr(): number {
   return window.devicePixelRatio || 1;
@@ -50,9 +57,18 @@ function reservaDosControles(): number {
   return 2 * (DIRECIONAL_ARTE * zoomToque() + 2 * FOLGA_CONTROLE_CSS);
 }
 
+/** Zoom CSS que preenche a tela de toque com os controles sobre a sebe. */
+function zoomDeToque(reserva: number): number {
+  const largura = (window.innerWidth - reserva) / (LOGICAL_WIDTH - 2 * SEBE_ARTE);
+  return Math.min(largura, window.innerHeight / LOGICAL_HEIGHT);
+}
+
 /** Zoom CSS do canvas: pixels fisicos por pixel de arte, inteiro sempre que der. */
 export function zoomCss(): number {
   const reserva = reservaDosControles();
+  if (reserva > 0 && window.innerWidth > 0 && dpr() >= DENSIDADE_FRACIONARIA) {
+    return zoomDeToque(reserva);
+  }
   const inteiro = multiploQueCabe(LOGICAL_WIDTH, LOGICAL_HEIGHT, reserva);
   const livre = encaixe(LOGICAL_WIDTH, LOGICAL_HEIGHT, reserva);
   if (window.innerWidth > 0 && (livre < 1 || (inteiro === 1 && reserva > 0))) {
