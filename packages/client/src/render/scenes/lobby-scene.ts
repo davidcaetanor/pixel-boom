@@ -4,7 +4,7 @@
  * convite, e a partida abre.
  */
 import Phaser from "phaser";
-import { parseRoomCode } from "@pixelboom/shared";
+import { NICKNAME_TAKEN_CODE, parseRoomCode } from "@pixelboom/shared";
 import { createRoom, joinRoom } from "../../net/room-client.js";
 import { LobbyPanel } from "../../ui/lobby-panel.js";
 
@@ -34,7 +34,7 @@ export class LobbyScene extends Phaser.Scene {
           this.panel?.showError("Codigo invalido");
           return;
         }
-        this.connect(joinRoom(code, nickname));
+        this.connect(joinRoom(code, nickname), code);
       },
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.panel?.dispose());
@@ -45,12 +45,13 @@ export class LobbyScene extends Phaser.Scene {
       if (nickname === null) {
         this.panel.awaitNickname(fromUrl);
       } else {
-        this.connect(joinRoom(fromUrl, nickname));
+        this.connect(joinRoom(fromUrl, nickname), fromUrl);
       }
     }
   }
 
-  private connect(joining: Promise<{ roomId: string }>): void {
+  /** `code` e a sala pedida ao entrar por codigo ou convite; ausente ao criar. */
+  private connect(joining: Promise<{ roomId: string }>, code?: string): void {
     this.panel?.setBusy(true);
     joining
       .then((room) => {
@@ -59,8 +60,15 @@ export class LobbyScene extends Phaser.Scene {
         window.history.replaceState(null, "", url);
         this.scene.start("online");
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         this.panel?.setBusy(false);
+        const taken = (error as { code?: unknown } | null)?.code === NICKNAME_TAKEN_CODE;
+        if (taken && code !== undefined) {
+          // Volta ao apelido ja mirando a mesma sala, para tentar de novo com outro nome.
+          this.panel?.awaitNickname(code);
+          this.panel?.showError("Apelido ja usado nesta sala, escolha outro");
+          return;
+        }
         this.panel?.showError("Sala nao encontrada ou cheia");
       });
   }
