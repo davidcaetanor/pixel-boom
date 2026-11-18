@@ -118,7 +118,8 @@
         line-height: normal;
       }
       /* No canto interno do painel, fora do fluxo: a posicao nao depende do titulo nem da sala. */
-      .lobby .room-gear {
+      .lobby button.room-gear {
+        box-sizing: content-box;
         position: absolute;
         top: 0;
         right: 0;
@@ -127,15 +128,23 @@
         padding: 0;
         border: 10px solid transparent;
         border-image: url(/ui-slot.png) 10 fill / 10px stretch;
-        background: url(/ui-engrenagem.png) center no-repeat;
       }
-      .lobby .room-gear:hover,
-      .lobby .room-gear:focus-visible {
+      .room-gear-icon {
+        display: block;
+        width: 28px;
+        height: 28px;
+        background: url(/ui-engrenagem.png) no-repeat;
+      }
+      .lobby button.room-gear:hover:not(:disabled),
+      .lobby button.room-gear:focus-visible:not(:disabled) {
         border-image-source: url(/ui-slot-hover.png);
-        background-image: url(/ui-engrenagem-foco.png);
       }
-      .lobby .room-gear:active {
+      .lobby button.room-gear:active:not(:disabled) {
         border-image-source: url(/ui-slot-selecionado.png);
+      }
+      .lobby button.room-gear:hover .room-gear-icon,
+      .lobby button.room-gear:focus-visible .room-gear-icon {
+        background-image: url(/ui-engrenagem-foco.png);
       }
       .lobby.room-settings h2,
       .lobby.pause h2 {
