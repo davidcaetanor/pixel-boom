@@ -36,3 +36,37 @@ export const SUDDEN_DEATH_RINGS: readonly (readonly number[])[] = (() => {
 
   return rings.map((ring) => Object.freeze(ring));
 })();
+
+/** Celulas do anel em volta, no sentido horario a partir do canto superior esquerdo. */
+function perimeter(ring: number): number[] {
+  const x0 = 1 + ring;
+  const y0 = 1 + ring;
+  const x1 = ARENA_COLS - 2 - ring;
+  const y1 = ARENA_ROWS - 2 - ring;
+  if (y0 === y1) {
+    return Array.from({ length: x1 - x0 + 1 }, (_, i) => cellIndex(x0 + i, y0));
+  }
+  const cells: number[] = [];
+  for (let x = x0; x <= x1; x += 1) {
+    cells.push(cellIndex(x, y0));
+  }
+  for (let y = y0 + 1; y <= y1; y += 1) {
+    cells.push(cellIndex(x1, y));
+  }
+  for (let x = x1 - 1; x >= x0; x -= 1) {
+    cells.push(cellIndex(x, y1));
+  }
+  for (let y = y1 - 1; y > y0; y -= 1) {
+    cells.push(cellIndex(x0, y));
+  }
+  return cells;
+}
+
+/** Celulas dos aneis a partir de `fromRing`, em espiral de fora para dentro. */
+export function spiralFrom(fromRing: number): readonly number[] {
+  const cells: number[] = [];
+  for (let ring = fromRing; ring < SUDDEN_DEATH_RING_COUNT; ring += 1) {
+    cells.push(...perimeter(ring));
+  }
+  return cells;
+}

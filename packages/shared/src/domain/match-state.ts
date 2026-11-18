@@ -32,8 +32,10 @@ export interface MatchState {
   powerUps: PowerUp[];
   /** Quantos aneis da arena ja fecharam. */
   ringsClosed: number;
-  /** Duelo de desempate: arena ja fechada ate a faixa central e sem caixas. */
+  /** Duelo de desempate: arena ja fechada alem da faixa central e sem caixas. */
   duel: boolean;
+  /** Celulas da espiral do duelo ja fechadas. */
+  cellsClosed: number;
   /** Vencedor da rodada quando phase = Finished; null em empate ou em andamento. */
   winnerId: string | null;
   /** Proximo id livre para bomba e explosao. */

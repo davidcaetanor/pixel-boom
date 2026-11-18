@@ -18,7 +18,7 @@ import { detonate } from "../rules/chain-reaction.js";
 import { applyDamage, flameCells } from "../rules/damage.js";
 import { generateMap } from "../rules/map-generation.js";
 import { burnPowerUps, collectPowerUps, rollDrops } from "../rules/pickup.js";
-import { closeRings, ringScheduleOf } from "../rules/sudden-death.js";
+import { closeRings, closeSpiral, ringScheduleOf } from "../rules/sudden-death.js";
 import { tickSpeedBoost } from "../rules/speed-boost.js";
 import { checkVictory } from "../rules/victory.js";
 import { movePlayer } from "../rules/movement.js";
@@ -83,6 +83,7 @@ export function createMatchState(
     powerUps: [],
     ringsClosed: duel ? BALANCE.duel.closedRings : 0,
     duel,
+    cellsClosed: 0,
     winnerId: null,
     nextEntityId: 1,
     rng: spawns.rng,
@@ -181,7 +182,7 @@ const applyFlameDamage: Stage = (state) => ({
 const collectItems: Stage = (state) => ({ ...state, ...collectPowerUps(state.players, state.powerUps) });
 
 const closeSuddenDeathRings: Stage = (state) => {
-  const closed = closeRings(state, state.elapsed, ringScheduleOf(state));
+  const closed = state.duel ? closeSpiral(state, state.elapsed) : closeRings(state, state.elapsed, ringScheduleOf(state));
   return {
     ...state,
     ...closed,

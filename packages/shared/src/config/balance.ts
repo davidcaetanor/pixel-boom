@@ -109,8 +109,10 @@ export const BALANCE = {
   duel: {
     /** Aneis ja fechados no inicio: um a mais aberto que o fechamento final. */
     closedRings: 3,
-    /** Segundos de duelo ate fechar o anel que sobra alem da faixa final. */
-    ringDelay: 20,
+    /** Segundos de duelo ate a parede comecar a avancar em espiral. */
+    spiralStart: 20,
+    /** Uma celula vira parede a cada intervalo: ninguem e esmagado junto, salvo na mesma celula. */
+    spiralCellSeconds: 0.5,
   },
 
   /** Formato da partida. */

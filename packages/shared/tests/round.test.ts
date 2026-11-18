@@ -10,7 +10,15 @@ import { POWER_UP_KINDS, PowerUpKind } from "../src/domain/powerup.js";
 import type { InputsByPlayer } from "../src/commands/input-command.js";
 import { createStaticGrid } from "../src/rules/map-generation.js";
 import { applyPowerUp, rollDrops, weightedKind } from "../src/rules/pickup.js";
-import { CLOSABLE_RINGS, DUEL_RINGS, ringClosesAt, ringsDue } from "../src/rules/sudden-death.js";
+import {
+  CLOSABLE_RINGS,
+  DUEL_RINGS,
+  DUEL_SPIRAL,
+  ringClosesAt,
+  ringsDue,
+  spiralClosesAt,
+  spiralDue,
+} from "../src/rules/sudden-death.js";
 import { ARENA_LAYOUTS } from "../src/config/arena-layouts.js";
 import { checkVictory } from "../src/rules/victory.js";
 import { seedRng } from "../src/simulation/rng.js";
@@ -309,10 +317,41 @@ describe("duelo de desempate", () => {
     expect(duel.players.map((p) => p.slot)).toEqual([2, 5, 7]);
   });
 
-  it("fecha o anel que sobra depois do atraso e para na faixa central", () => {
-    expect(ringsDue(0, DUEL_RINGS)).toBe(BALANCE.duel.closedRings);
-    expect(ringsDue(BALANCE.duel.ringDelay, DUEL_RINGS)).toBe(CLOSABLE_RINGS);
-    expect(ringsDue(10_000, DUEL_RINGS)).toBe(CLOSABLE_RINGS);
+  it("no duelo os aneis nao fecham alem dos iniciais; quem fecha e a espiral", () => {
+    expect(ringsDue(10_000, DUEL_RINGS)).toBe(BALANCE.duel.closedRings);
+    expect(spiralDue(BALANCE.duel.spiralStart - 0.01)).toBe(0);
+    expect(spiralDue(BALANCE.duel.spiralStart)).toBe(1);
+    expect(spiralDue(BALANCE.duel.spiralStart + BALANCE.duel.spiralCellSeconds)).toBe(2);
+    expect(spiralDue(10_000)).toBe(DUEL_SPIRAL.length);
+  });
+
+  it("espiral cobre o que sobra do duelo uma vez, de fora para dentro, celula vizinha a celula", () => {
+    expect([...DUEL_SPIRAL].sort((a, b) => a - b)).toEqual([...open].sort((a, b) => a - b));
+    const outer = new Set(SUDDEN_DEATH_RINGS[BALANCE.duel.closedRings]);
+    expect(outer.has(DUEL_SPIRAL[0] as number)).toBe(true);
+    const ring = SUDDEN_DEATH_RINGS[BALANCE.duel.closedRings]?.length ?? 0;
+    for (let i = 1; i < ring; i += 1) {
+      const a = DUEL_SPIRAL[i - 1] as number;
+      const b = DUEL_SPIRAL[i] as number;
+      expect(Math.abs((a % ARENA_COLS) - (b % ARENA_COLS)) + Math.abs(Math.floor(a / ARENA_COLS) - Math.floor(b / ARENA_COLS))).toBe(1);
+    }
+  });
+
+  it("duelo sempre termina: a espiral fecha tudo antes do teto da partida", () => {
+    expect(spiralClosesAt(DUEL_SPIRAL.length - 1)).toBeLessThan(BALANCE.time.matchMax);
+    let s = createMatchState(3, ["a", "b"], { duel: true });
+    while (s.phase !== MatchPhase.Finished) {
+      s = step(s, {}, TICK_SECONDS);
+    }
+    expect(s.elapsed).toBeLessThan(spiralClosesAt(DUEL_SPIRAL.length - 1) + 1);
+  });
+
+  it("parados em celulas diferentes, a espiral esmaga um antes do outro", () => {
+    let s = createMatchState(3, ["a", "b"], { duel: true });
+    while (s.phase !== MatchPhase.Finished) {
+      s = step(s, {}, TICK_SECONDS);
+    }
+    expect(s.winnerId).not.toBeNull();
   });
 
   it("cabe a sala inteira no duelo em todo layout", () => {

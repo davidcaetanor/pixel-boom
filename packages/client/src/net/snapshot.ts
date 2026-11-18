@@ -179,6 +179,7 @@ export function readSnapshot(remote: RemoteState): Snapshot {
     powerUps: [...remote.powerUps].map((p) => ({ kind: p.kind as PowerUpKind, x: p.x, y: p.y })),
     ringsClosed: 0,
     duel: remote.duel,
+    cellsClosed: 0,
     winnerId: remote.winnerId === "" ? null : remote.winnerId,
     nextEntityId: 0,
     rng: 0,

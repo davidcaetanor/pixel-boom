@@ -5,7 +5,7 @@ import { SUDDEN_DEATH_RINGS } from "../config/sudden-death-order.js";
 import type { Bomb } from "../domain/bomb.js";
 import type { MatchState } from "../domain/match-state.js";
 import { propagate } from "../rules/explosion-propagation.js";
-import { ringClosesAt, ringScheduleOf } from "../rules/sudden-death.js";
+import { DUEL_SPIRAL, ringClosesAt, ringScheduleOf, spiralClosesAt } from "../rules/sudden-death.js";
 
 export interface DangerMap {
   /** Segundos ate a chama chegar; Infinity onde nao chega. */
@@ -16,7 +16,10 @@ export interface DangerMap {
   readonly closes: Float64Array;
 }
 
-export type DangerSource = Pick<MatchState, "grid" | "bombs" | "explosions" | "elapsed" | "ringsClosed" | "duel">;
+export type DangerSource = Pick<
+  MatchState,
+  "grid" | "bombs" | "explosions" | "elapsed" | "ringsClosed" | "duel" | "cellsClosed"
+>;
 
 function emptyDanger(): DangerMap {
   return {
@@ -80,6 +83,12 @@ export function dangerMap(state: DangerSource, bombs: readonly Bomb[] = state.bo
     const closesIn = Math.max(ringClosesAt(ring, schedule) - state.elapsed, 0);
     for (const cell of SUDDEN_DEATH_RINGS[ring] ?? []) {
       danger.closes[cell] = closesIn;
+    }
+  }
+  if (state.duel) {
+    for (let i = state.cellsClosed; i < DUEL_SPIRAL.length; i += 1) {
+      const cell = DUEL_SPIRAL[i] as number;
+      danger.closes[cell] = Math.min(danger.closes[cell] ?? Infinity, Math.max(spiralClosesAt(i) - state.elapsed, 0));
     }
   }
   return danger;
