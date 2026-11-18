@@ -3,7 +3,7 @@
  * entra direto com o apelido salvo. Ao conectar, o codigo vai para a URL.
  */
 import Phaser from "phaser";
-import { NICKNAME_TAKEN_CODE, parseRoomCode } from "@pixelboom/shared";
+import { NICKNAME_TAKEN_CODE, SERVER_FULL_CODE, parseRoomCode } from "@pixelboom/shared";
 import { createRoom, joinRoom } from "../../net/room-client.js";
 import { LobbyPanel } from "../../ui/lobby-panel.js";
 
@@ -63,7 +63,12 @@ export class LobbyScene extends Phaser.Scene {
       })
       .catch((error: unknown) => {
         this.panel?.setBusy(false);
-        const taken = (error as { code?: unknown } | null)?.code === NICKNAME_TAKEN_CODE;
+        const errorCode = (error as { code?: unknown } | null)?.code;
+        if (errorCode === SERVER_FULL_CODE) {
+          this.panel?.showError("Servidor cheio no momento, tente em instantes");
+          return;
+        }
+        const taken = errorCode === NICKNAME_TAKEN_CODE;
         if (taken && code !== undefined) {
           this.panel?.awaitNickname(code);
           this.panel?.showError("Apelido ja usado nesta sala, escolha outro");

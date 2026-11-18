@@ -25,6 +25,7 @@ import {
   createMatchState,
   decideBot,
   NICKNAME_TAKEN_CODE,
+  SERVER_FULL_CODE,
   firstFreeCharacter,
   keepPresentDuelists,
   otherDifficulty,
@@ -63,10 +64,13 @@ const BOT_ID_PREFIX = "bot-";
 const SOLO_CAPACITY = 2;
 const ROOM_FULL_CODE = 4002;
 
+/** Salas vivas neste processo; o teto protege a CPU da maquina contra criacao em massa. */
+let activeRooms = 0;
 
 export class MatchRoom extends Room<{ state: MatchSchema }> {
   override maxClients: number = BALANCE.room.capacityMax;
   override maxMessagesPerSecond = BALANCE.net.maxMessagesPerSecond;
+  override seatReservationTimeout = BALANCE.net.seatReservationSeconds;
   override state = new MatchSchema();
 
   private match: MatchState | null = null;
@@ -87,6 +91,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   private readonly botMemories = new Map<string, BotMemory>();
   /** O timer do sistema nao e preciso o bastante; o acumulador garante a taxa de ticks. */
   private readonly loop: FixedLoopState = createFixedLoop();
+  private counted = false;
 
   override messages = {
     input: (client: Client, raw: unknown): void => {
@@ -192,6 +197,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   };
 
   override onCreate(options: unknown): void {
+    if (activeRooms >= BALANCE.room.maxActiveRooms) {
+      throw new ServerError(SERVER_FULL_CODE, "servidor cheio");
+    }
+    activeRooms += 1;
+    this.counted = true;
     this.roomId = generateRoomCode();
     const solo = parseBotDifficulty(options);
     if (solo !== null) {
@@ -276,6 +286,13 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   /** Na sala contra bot, o criador e o unico humano. */
   private isFullForHumans(): boolean {
     return this.closed ? this.hostId !== "" : isRoomFull(this.members.size, this.capacity);
+  }
+
+  override onDispose(): void {
+    if (this.counted) {
+      activeRooms -= 1;
+      this.counted = false;
+    }
   }
 
   override onLeave(client: Client): void {

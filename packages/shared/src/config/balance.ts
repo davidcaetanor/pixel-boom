@@ -60,6 +60,8 @@ export const BALANCE = {
   room: {
     capacityMin: 2,
     capacityMax: 8,
+    /** Salas vivas no servidor ao mesmo tempo; acima disso a criacao e recusada. */
+    maxActiveRooms: 12,
   },
 
   /** Rede. */
@@ -73,6 +75,8 @@ export const BALANCE = {
     maxMessagesPerSecond: 60,
     /** Entradas em espera por jogador no servidor, cerca de 200 ms a 30 Hz. */
     maxQueuedInputs: 6,
+    /** Segundos para quem criou ou entrou se conectar; sala sem ninguem conectado e descartada. */
+    seatReservationSeconds: 8,
   },
 
   /** Bot. Tempos em segundos; chances de 0 a 1. */
