@@ -81,6 +81,24 @@ export function parseKick(raw: unknown): string | null {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
+/** Bot pedido pelo anfitriao: `{ difficulty }`. */
+export function parseAddBot(raw: unknown): BotDifficulty | null {
+  const difficulty = single(raw, "difficulty");
+  return isBotDifficulty(difficulty) ? difficulty : null;
+}
+
+/** Troca de personagem de um bot: `{ id, index }`. O indice e validado pela regra. */
+export function parseBotCharacter(raw: unknown): { readonly id: string; readonly index: number } | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw) || Object.keys(raw).length !== 2) {
+    return null;
+  }
+  const { id, index } = raw as Record<string, unknown>;
+  if (typeof id !== "string" || id.length === 0 || typeof index !== "number" || !Number.isInteger(index)) {
+    return null;
+  }
+  return { id, index };
+}
+
 /** Opcoes de entrada na sala: `{ nickname }`. */
 export function parseJoinNickname(options: unknown): string | null {
   if (typeof options !== "object" || options === null || Array.isArray(options)) {

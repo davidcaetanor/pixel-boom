@@ -3,7 +3,7 @@
  * tick; a grade e atualizada celula a celula para enviar so a diferenca.
  */
 import { ArraySchema } from "@colyseus/schema";
-import { MatchPhase, type MatchState, type Series } from "@pixelboom/shared";
+import { MatchPhase, type BotDifficulty, type MatchState, type Series } from "@pixelboom/shared";
 import {
   BombSchema,
   ExplosionSchema,
@@ -85,6 +85,7 @@ export interface LobbyMember {
   readonly order: number;
   readonly nickname: string;
   readonly bot: boolean;
+  readonly difficulty?: BotDifficulty;
 }
 
 export function writeLobby(
@@ -106,6 +107,7 @@ export function writeLobby(
     s.order = member.order;
     s.nickname = member.nickname;
     s.bot = member.bot;
+    s.difficulty = member.difficulty ?? "";
     if (!target.members.has(id)) {
       target.members.set(id, s);
     }

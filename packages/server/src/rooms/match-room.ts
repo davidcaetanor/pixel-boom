@@ -3,8 +3,9 @@
  * envia entradas numeradas, consumidas uma por tick. A sala tem um codigo
  * curto como id e uma espera em que cada jogador escolhe personagem. O
  * anfitriao define a capacidade, remove membros e inicia a serie; ao fim
- * dela todos voltam para a espera. Na sala
- * contra bot, o bot entra logo depois do criador e a sala fecha para outros.
+ * dela todos voltam para a espera. Bots ocupam vagas como humanos, mas nao
+ * sao conexoes: a lotacao e controlada aqui, nao pelo maxClients. A sala
+ * contra bot nasce fechada, com duas vagas e o bot da dificuldade pedida.
  */
 import { Room, ServerError, type Client } from "@colyseus/core";
 import {
@@ -15,6 +16,9 @@ import {
   TICK_SECONDS,
   advance,
   applySeriesScore,
+  BotDifficulty,
+  botNickname,
+  canAddBot,
   canKick,
   canPickCharacter,
   canSetCapacity,
@@ -25,12 +29,12 @@ import {
   NICKNAME_TAKEN_CODE,
   firstFreeCharacter,
   keepPresentDuelists,
+  otherDifficulty,
   isNicknameTaken,
   isRoomFull,
   KICKED_CODE,
   recordRound,
   step,
-  type BotDifficulty,
   type BotMemory,
   type FixedLoopState,
   type InputCommand,
@@ -40,6 +44,8 @@ import {
 import { writeLobby, writeMatch, writeWaiting, type LobbyMember } from "../schema/mappers.js";
 import { MatchSchema } from "../schema/match-schema.js";
 import {
+  parseAddBot,
+  parseBotCharacter,
   parseBotDifficulty,
   parseCapacity,
   parseCharacterPick,
@@ -53,8 +59,9 @@ const MS_PER_SECOND = 1000;
 /** Faixa de sementes de 31 bits, a mesma que o RNG de shared aceita. */
 const SEED_RANGE = 2 ** 31;
 const BAD_REQUEST = 400;
-const BOT_ID = "bot";
-const BOT_NICKNAMES = ["BOT", "CPU", "ROBO"];
+const BOT_ID_PREFIX = "bot-";
+const SOLO_CAPACITY = 2;
+const ROOM_FULL_CODE = 4002;
 
 
 export class MatchRoom extends Room<{ state: MatchSchema }> {
@@ -70,8 +77,13 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   private nextOrder = 0;
   private finishedFor = 0;
   private roundRecorded = false;
-  private botDifficulty: BotDifficulty | null = null;
-  private botMemory: BotMemory = createBotMemory(0);
+  private capacity: number = BALANCE.room.capacityMax;
+  /** Sala contra bot: so o criador entra. */
+  private closed = false;
+  /** Bot da sala contra bot, criado logo depois do anfitriao para ele ficar com o primeiro slot. */
+  private soloBot: BotDifficulty | null = null;
+  private nextBot = 1;
+  private readonly botMemories = new Map<string, BotMemory>();
   /** O timer do sistema nao e preciso o bastante; o acumulador garante a taxa de ticks. */
   private readonly loop: FixedLoopState = createFixedLoop();
 
@@ -93,13 +105,41 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
         this.publishLobby();
       }
     },
+    addBot: (client: Client, raw: unknown): void => {
+      const difficulty = parseAddBot(raw);
+      if (this.isHostInLobby(client) && difficulty !== null && canAddBot(this.members.size, this.capacity)) {
+        this.addBot(difficulty);
+        this.syncLock();
+        this.publishLobby();
+      }
+    },
+    botDifficulty: (client: Client, raw: unknown): void => {
+      const id = parseKick(raw);
+      const bot = id === null ? undefined : this.members.get(id);
+      if (this.isHostInLobby(client) && id !== null && bot?.difficulty !== undefined) {
+        this.members.set(id, { ...bot, difficulty: otherDifficulty(bot.difficulty) });
+        this.publishLobby();
+      }
+    },
+    botCharacter: (client: Client, raw: unknown): void => {
+      const pick = parseBotCharacter(raw);
+      const bot = pick === null ? undefined : this.members.get(pick.id);
+      if (!this.isHostInLobby(client) || pick === null || bot?.difficulty === undefined) {
+        return;
+      }
+      if (canPickCharacter(this.charactersExcept(pick.id), pick.index)) {
+        const nickname = botNickname(pick.index, this.humanNicknames());
+        this.members.set(pick.id, { ...bot, character: pick.index, nickname });
+        this.publishLobby();
+      }
+    },
     capacity: (client: Client, raw: unknown): void => {
       const value = parseCapacity(raw);
-      if (client.sessionId !== this.hostId || this.match !== null || this.botDifficulty !== null) {
+      if (!this.isHostInLobby(client)) {
         return;
       }
       if (canSetCapacity(value, this.members.size)) {
-        this.maxClients = value;
+        this.capacity = value;
         this.state.capacity = value;
         this.syncLock();
       }
@@ -109,7 +149,14 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       if (this.match !== null || target === null) {
         return;
       }
-      if (canKick(client.sessionId, this.hostId, target, this.members.keys())) {
+      if (!canKick(client.sessionId, this.hostId, target, this.members.keys())) {
+        return;
+      }
+      if (this.members.get(target)?.bot === true) {
+        this.members.delete(target);
+        this.syncLock();
+        this.publishLobby();
+      } else {
         this.clients.getById(target)?.leave(KICKED_CODE);
       }
     },
@@ -126,9 +173,14 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
 
   override onCreate(options: unknown): void {
     this.roomId = generateRoomCode();
-    this.botDifficulty = parseBotDifficulty(options);
-    this.state.botDifficulty = this.botDifficulty ?? "";
-    this.state.capacity = this.maxClients;
+    const solo = parseBotDifficulty(options);
+    if (solo !== null) {
+      this.closed = true;
+      this.capacity = SOLO_CAPACITY;
+      this.soloBot = solo;
+    }
+    this.state.closed = this.closed;
+    this.state.capacity = this.capacity;
     this.setPatchRate(MS_PER_SECOND / BALANCE.net.patchesPerSecond);
     this.setSimulationInterval((deltaMs) => {
       const ticks = advance(this.loop, deltaMs / MS_PER_SECOND);
@@ -144,8 +196,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     if (nickname === null) {
       throw new ServerError(BAD_REQUEST, "apelido obrigatorio");
     }
-    if (isNicknameTaken(this.nicknames(), nickname)) {
+    if (isNicknameTaken(this.humanNicknames(), nickname)) {
       throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
+    }
+    if (this.isFullForHumans()) {
+      throw new ServerError(ROOM_FULL_CODE, "sala cheia");
     }
     return true;
   }
@@ -153,8 +208,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   override onJoin(client: Client, options: unknown): void {
     const nickname = parseJoinNickname(options) ?? "";
     // Entradas simultaneas passam juntas pelo onAuth.
-    if (isNicknameTaken(this.nicknames(), nickname)) {
+    if (isNicknameTaken(this.humanNicknames(), nickname)) {
       throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
+    }
+    if (this.isFullForHumans()) {
+      throw new ServerError(ROOM_FULL_CODE, "sala cheia");
     }
     this.queues.set(client.sessionId, new InputQueue());
     const character = firstFreeCharacter(this.charactersExcept(client.sessionId)) ?? 0;
@@ -163,19 +221,40 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     if (this.hostId === "") {
       this.hostId = client.sessionId;
     }
-    if (this.botDifficulty !== null && !this.members.has(BOT_ID)) {
-      this.addBot();
+    if (this.soloBot !== null) {
+      this.addBot(this.soloBot);
+      this.soloBot = null;
     }
+    this.renameBots();
     this.syncLock();
     this.publishLobby();
   }
 
-  private addBot(): void {
-    const taken = this.nicknames();
-    const nickname = BOT_NICKNAMES.find((name) => !isNicknameTaken(taken, name)) ?? BOT_NICKNAMES[0] ?? "";
-    const character = firstFreeCharacter(this.charactersExcept(BOT_ID)) ?? 0;
-    this.members.set(BOT_ID, { character, order: this.nextOrder, nickname, bot: true });
+  private addBot(difficulty: BotDifficulty): void {
+    const id = `${BOT_ID_PREFIX}${this.nextBot}`;
+    this.nextBot += 1;
+    const character = firstFreeCharacter(this.charactersExcept(id)) ?? 0;
+    const nickname = botNickname(character, this.humanNicknames());
+    this.members.set(id, { character, order: this.nextOrder, nickname, bot: true, difficulty });
     this.nextOrder += 1;
+  }
+
+  private renameBots(): void {
+    const humans = this.humanNicknames();
+    for (const [id, member] of this.members) {
+      if (member.bot) {
+        this.members.set(id, { ...member, nickname: botNickname(member.character, humans) });
+      }
+    }
+  }
+
+  private isHostInLobby(client: Client): boolean {
+    return client.sessionId === this.hostId && this.match === null;
+  }
+
+  /** Na sala contra bot, o criador e o unico humano. */
+  private isFullForHumans(): boolean {
+    return this.closed ? this.hostId !== "" : isRoomFull(this.members.size, this.capacity);
   }
 
   override onLeave(client: Client): void {
@@ -196,17 +275,16 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     }
   }
 
-  /** A sala contra bot fica sempre fechada; as outras, so enquanto cheias. */
   private syncLock(): void {
-    if (this.botDifficulty !== null || isRoomFull(this.members.size, this.maxClients)) {
+    if (this.isFullForHumans()) {
       void this.lock();
     } else {
       void this.unlock();
     }
   }
 
-  private nicknames(): string[] {
-    return [...this.members.values()].map((m) => m.nickname);
+  private humanNicknames(): string[] {
+    return [...this.members.values()].filter((m) => !m.bot).map((m) => m.nickname);
   }
 
   private charactersExcept(id: string): number[] {
@@ -223,12 +301,17 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     const everyone = [...this.members]
       .sort((a, b) => a[1].order - b[1].order)
       .map(([id]) => id)
-      .slice(0, this.maxClients);
+      .slice(0, this.capacity);
     const duel = this.series.duel.length > 0;
     const ids = duel ? everyone.filter((id) => this.series.duel.includes(id)) : everyone;
     const slots = ids.map((id) => everyone.indexOf(id));
     this.match = applySeriesScore(createMatchState(seed, ids, { duel, slots }), this.series);
-    this.botMemory = createBotMemory(seed);
+    this.botMemories.clear();
+    ids.forEach((id, i) => {
+      if (this.members.get(id)?.bot === true) {
+        this.botMemories.set(id, createBotMemory(seed + i));
+      }
+    });
     this.finishedFor = 0;
     this.roundRecorded = false;
     this.publishMatch();
@@ -246,10 +329,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
         frame[player.id] = queue.next();
       }
     }
-    if (this.botDifficulty !== null && this.members.has(BOT_ID)) {
-      const decision = decideBot(this.match, BOT_ID, this.botDifficulty, this.botMemory, TICK_SECONDS);
-      this.botMemory = decision.memory;
-      frame[BOT_ID] = decision.input;
+    for (const [id, memory] of this.botMemories) {
+      const difficulty = this.members.get(id)?.difficulty ?? BotDifficulty.Normal;
+      const decision = decideBot(this.match, id, difficulty, memory, TICK_SECONDS);
+      this.botMemories.set(id, decision.memory);
+      frame[id] = decision.input;
     }
     this.match = step(this.match, frame, TICK_SECONDS);
 
