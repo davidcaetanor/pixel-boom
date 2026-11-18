@@ -45,7 +45,6 @@ export class RoomPanel {
   private readonly copy: HTMLButtonElement;
   private readonly title: HTMLElement;
   private readonly cards: HTMLButtonElement[] = [];
-  /** Botao de remover o dono de cada personagem, so para o anfitriao. */
   private readonly kicks: HTMLButtonElement[] = [];
   private readonly capacityRow: HTMLElement;
   private readonly capacityLess: HTMLButtonElement;

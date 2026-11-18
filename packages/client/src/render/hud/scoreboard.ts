@@ -49,7 +49,6 @@ export class Scoreboard {
 
   render(players: readonly Player[], names: Nicknames): void {
     const bySlot = new Map(players.map((p) => [p.slot, p]));
-    // Salas menores que o maximo ficam centradas na faixa.
     const columns = Math.max(0, ...players.map((p) => p.slot + 1));
     const offset = ((SLOTS - columns) * CELL_WIDTH) / 2;
     this.entries.forEach((entry, slot) => {

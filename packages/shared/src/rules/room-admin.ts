@@ -21,7 +21,6 @@ export function isRoomFull(occupants: number, capacity: number): boolean {
   return occupants >= capacity;
 }
 
-/** So o anfitriao remove, e nunca a si mesmo. */
 export function canKick(requesterId: string, hostId: string, targetId: string, memberIds: Iterable<string>): boolean {
   return requesterId === hostId && targetId !== hostId && new Set(memberIds).has(targetId);
 }
