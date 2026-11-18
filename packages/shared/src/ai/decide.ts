@@ -25,11 +25,13 @@ export function isBotDifficulty(value: unknown): value is BotDifficulty {
 export interface BotMemory {
   /** Celula escolhida como destino; null sem plano. */
   readonly target: number | null;
+  /** Segundos restantes de compromisso com o alvo. */
+  readonly hold: number;
   readonly rng: RngState;
 }
 
 export function createBotMemory(seed: number): BotMemory {
-  return { target: null, rng: seedRng(seed) };
+  return { target: null, hold: 0, rng: seedRng(seed) };
 }
 
 export interface BotDecision {
@@ -141,6 +143,14 @@ function targetScore(view: View, cell: number): number {
   return score;
 }
 
+function stillSafe(view: View, cell: number | null): cell is number {
+  if (cell === null) {
+    return false;
+  }
+  const arrival = view.paths.arrival[cell] ?? Infinity;
+  return arrival !== Infinity && isSafeSpot(view.danger, cell, arrival, MARGIN);
+}
+
 function chooseTarget(view: View, current: number | null): number {
   let best = view.cell;
   let bestScore = -Infinity;
@@ -154,11 +164,7 @@ function chooseTarget(view: View, current: number | null): number {
       bestScore = score;
     }
   }
-  const keep =
-    current !== null &&
-    view.paths.arrival[current] !== Infinity &&
-    isSafeSpot(view.danger, current, view.paths.arrival[current] ?? Infinity, MARGIN) &&
-    targetScore(view, current) + BALANCE.ai.targetHysteresis >= bestScore;
+  const keep = stillSafe(view, current) && targetScore(view, current) + BALANCE.ai.targetHysteresis >= bestScore;
   return keep ? current : best;
 }
 
@@ -173,7 +179,8 @@ function axisToward(delta: number, tolerance: number): AxisIntent {
 function steer(view: View, target: number, dt: number): InputCommand {
   const { me } = view;
   const next = firstStep(view.paths, target);
-  const tolerance = (me.speed * dt) / 2;
+  // Tolerancia de um passo inteiro: menos que isso passa do centro e volta.
+  const tolerance = me.speed * dt;
   const dx = cellX(next) + CELL_CENTER - me.x;
   const dy = cellY(next) + CELL_CENTER - me.y;
   if (next === view.cell) {
@@ -186,6 +193,11 @@ function steer(view: View, target: number, dt: number): InputCommand {
     : { moveX: 0, moveY: axisToward(dy, 0) };
 }
 
+/** Alvo novo renova o compromisso; o mesmo alvo so gasta o tempo restante. */
+function hold(memory: BotMemory, target: number, dt: number): number {
+  return target === memory.target ? Math.max(memory.hold - dt, 0) : BALANCE.ai.targetHoldTime;
+}
+
 export function decideBot(
   state: MatchState,
   botId: string,
@@ -196,7 +208,7 @@ export function decideBot(
   const me = state.players.find((p) => p.id === botId);
   const active = state.phase === MatchPhase.Playing || state.phase === MatchPhase.SuddenDeath;
   if (me === undefined || !me.alive || !active) {
-    return { input: IDLE_INPUT, memory: { ...memory, target: null } };
+    return { input: IDLE_INPUT, memory: { ...memory, target: null, hold: 0 } };
   }
 
   const params = BALANCE.ai.difficulty[difficulty];
@@ -213,8 +225,9 @@ export function decideBot(
   };
 
   if (!isSafeSpot(danger, view.cell, 0, MARGIN)) {
-    const target = refuge(view.paths, danger) ?? view.cell;
-    return { input: steer(view, target, dt), memory: { ...memory, target } };
+    const kept = memory.hold > 0 && stillSafe(view, memory.target) ? memory.target : null;
+    const target = kept ?? refuge(view.paths, danger) ?? view.cell;
+    return { input: steer(view, target, dt), memory: { ...memory, target, hold: hold(memory, target, dt) } };
   }
 
   let rng = memory.rng;
@@ -226,10 +239,13 @@ export function decideBot(
     const crateSpot = plan.crates > 0 && memory.target === view.cell;
     if (crateSpot || (plan.trapsEnemy && trap) || (plan.hitsEnemy && poke)) {
       // O step move antes de soltar a bomba; parado, ela cai na celula avaliada.
-      return { input: { ...IDLE_INPUT, bomb: true }, memory: { target: plan.escape, rng } };
+      return {
+        input: { ...IDLE_INPUT, bomb: true },
+        memory: { target: plan.escape, hold: BALANCE.ai.targetHoldTime, rng },
+      };
     }
   }
 
-  const target = chooseTarget(view, memory.target);
-  return { input: steer(view, target, dt), memory: { target, rng } };
+  const target = memory.hold > 0 && stillSafe(view, memory.target) ? memory.target : chooseTarget(view, memory.target);
+  return { input: steer(view, target, dt), memory: { target, hold: hold(memory, target, dt), rng } };
 }

@@ -70,6 +70,8 @@ export const BALANCE = {
     flameMargin: 0.2,
     /** Um alvo novo so substitui o atual se valer este tanto a mais. */
     targetHysteresis: 1.5,
+    /** Tempo minimo com o mesmo alvo enquanto ele continuar seguro. */
+    targetHoldTime: 0.6,
     /** Pesos da escolha de alvo; travelCost e descontado por segundo de caminho. */
     powerUpValue: 8,
     crateValue: 3,
