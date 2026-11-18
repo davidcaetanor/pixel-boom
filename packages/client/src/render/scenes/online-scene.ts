@@ -202,7 +202,7 @@ export class OnlineScene extends Phaser.Scene {
 
     this.timer.render(state, `SALA ${this.room.roomId}  ${roundLabel(series)}`, onlineBanner(state, series, localId, names));
     this.status.setText("");
-    this.scoreboard.render(state.players, localId, names);
+    this.scoreboard.render(state.players, names);
   }
 
   private renderRoom(lobby: Lobby): void {
