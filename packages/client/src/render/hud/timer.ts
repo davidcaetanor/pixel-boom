@@ -17,8 +17,16 @@ const TINT_NORMAL = 0xffffff;
 /** Folga do texto ate a borda interna da placa do topo e do banner central. */
 const PLACA_PADDING_X = 20;
 const PLACA_TOPO_Y = 0;
-/** A placa ocupa a faixa de borda do topo, um tile de altura. */
-const PLACA_TOPO_ALTURA = 32;
+/** Altura das placas do topo: a faixa da borda mais 4 px de respiro. */
+export const PLACA_TOPO_ALTURA = 36;
+/**
+ * Miolo escuro da placa: da linha 8 ate `altura - 12` (as barras de cima e de
+ * baixo da moldura tem alturas diferentes). Conteudo centraliza nele, nao na
+ * altura total.
+ */
+const MIOLO_TOPO = 8;
+const MIOLO_RECUO_BASE = 12;
+export const CENTRO_MIOLO_TOPO = Math.round((MIOLO_TOPO + PLACA_TOPO_ALTURA - MIOLO_RECUO_BASE) / 2);
 /** Espaco entre os grupos da placa do topo (sala, rodada, aviso e relogio). */
 const ESPACO_GRUPOS = 16;
 /** Os grupos chegam separados por dois ou mais espacos. */
@@ -129,7 +137,7 @@ export class TimerHud {
     this.placaTopo.setSize(largura, altura).setPosition(x, PLACA_TOPO_Y);
     let cursor = x + PLACA_PADDING_X;
     for (const g of usados) {
-      g.setPosition(cursor, PLACA_TOPO_Y + Math.round((altura - g.height) / 2));
+      g.setPosition(cursor, PLACA_TOPO_Y + CENTRO_MIOLO_TOPO - Math.floor(g.height / 2));
       cursor += g.width + ESPACO_GRUPOS;
     }
   }

@@ -21,12 +21,14 @@ A barra sai de `glifos.py`.
 
 ## Layout
 
-- Placa com 32 px de altura e 20 px de margem interna lateral, como a do relogio.
-  O miolo escuro vai da linha 8 a 20; icones e texto centralizados na linha 14:
-  icone em `14 - floor(altura / 2)`, texto (9 px) na linha 10.
+- Placa com `PLACA_TOPO_ALTURA` (36 px) de altura e 20 px de margem interna
+  lateral, como a do relogio. O miolo escuro vai da linha 8 ate a 24; tudo
+  centraliza em `CENTRO_MIOLO_TOPO` (linha 16), as duas constantes exportadas de
+  `client/src/render/hud/timer.ts`: icone em `16 - floor(altura / 2)`, texto
+  (9 px) na linha 12.
 - Ordem: bomba, numero, alcance, numero, bota, barra.
 - 4 px entre icone e numero ou barra; 12 px entre grupos.
-- Barra com o topo na linha 12; o preenchimento fica 1 px para dentro da moldura.
+- Barra com o topo na linha 14; o preenchimento fica 1 px para dentro da moldura.
 - Posicao: `placaDireitaX(timer.bordaDireitaTopo, largura)` em
   `client/src/render/hud/top-layout.ts`, recalculada quando a placa do relogio
   muda de largura.
