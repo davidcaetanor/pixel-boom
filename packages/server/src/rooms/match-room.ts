@@ -2,7 +2,8 @@
  * Sala autoritativa: roda a simulacao de shared e decide o estado; o cliente
  * envia entradas numeradas, consumidas uma por tick. A sala tem um codigo
  * curto como id e uma espera em que cada jogador escolhe personagem. O
- * anfitriao inicia a serie; ao fim dela todos voltam para a espera.
+ * anfitriao inicia a serie; ao fim dela todos voltam para a espera. Na sala
+ * contra bot, o bot entra logo depois do criador e a sala fecha para outros.
  */
 import { Room, ServerError, type Client } from "@colyseus/core";
 import {
@@ -14,13 +15,17 @@ import {
   advance,
   applySeriesScore,
   canPickCharacter,
+  createBotMemory,
   createFixedLoop,
   createMatchState,
+  decideBot,
   NICKNAME_TAKEN_CODE,
   firstFreeCharacter,
   isNicknameTaken,
   recordRound,
   step,
+  type BotDifficulty,
+  type BotMemory,
   type FixedLoopState,
   type InputCommand,
   type MatchState,
@@ -28,13 +33,15 @@ import {
 } from "@pixelboom/shared";
 import { writeLobby, writeMatch, writeWaiting, type LobbyMember } from "../schema/mappers.js";
 import { MatchSchema } from "../schema/match-schema.js";
-import { parseCharacterPick, parseInput, parseJoinNickname } from "../validation/input-validator.js";
+import { parseBotDifficulty, parseCharacterPick, parseInput, parseJoinNickname } from "../validation/input-validator.js";
 import { generateRoomCode } from "./room-code.js";
 
 const MS_PER_SECOND = 1000;
 /** Faixa de sementes de 31 bits, a mesma que o RNG de shared aceita. */
 const SEED_RANGE = 2 ** 31;
 const BAD_REQUEST = 400;
+const BOT_ID = "bot";
+const BOT_NICKNAMES = ["BOT", "CPU", "ROBO"];
 
 export class MatchRoom extends Room<{ state: MatchSchema }> {
   override maxClients = BALANCE.net.maxClientsPerRoom;
@@ -49,6 +56,8 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   private nextOrder = 0;
   private finishedFor = 0;
   private roundRecorded = false;
+  private botDifficulty: BotDifficulty | null = null;
+  private botMemory: BotMemory = createBotMemory(0);
   /** O timer do sistema nao e preciso o bastante; o acumulador garante a taxa de ticks. */
   private readonly loop: FixedLoopState = createFixedLoop();
 
@@ -74,15 +83,17 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       const canStart =
         client.sessionId === this.hostId &&
         this.match === null &&
-        this.clients.length >= BALANCE.net.minPlayersToStart;
+        this.members.size >= BALANCE.net.minPlayersToStart;
       if (canStart) {
         this.startRound();
       }
     },
   };
 
-  override onCreate(): void {
+  override onCreate(options: unknown): void {
     this.roomId = generateRoomCode();
+    this.botDifficulty = parseBotDifficulty(options);
+    this.state.botDifficulty = this.botDifficulty ?? "";
     this.setPatchRate(MS_PER_SECOND / BALANCE.net.patchesPerSecond);
     this.setSimulationInterval((deltaMs) => {
       const ticks = advance(this.loop, deltaMs / MS_PER_SECOND);
@@ -112,12 +123,24 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     }
     this.queues.set(client.sessionId, new InputQueue());
     const character = firstFreeCharacter(this.charactersExcept(client.sessionId)) ?? 0;
-    this.members.set(client.sessionId, { character, order: this.nextOrder, nickname });
+    this.members.set(client.sessionId, { character, order: this.nextOrder, nickname, bot: false });
     this.nextOrder += 1;
     if (this.hostId === "") {
       this.hostId = client.sessionId;
     }
+    if (this.botDifficulty !== null && !this.members.has(BOT_ID)) {
+      this.addBot();
+      void this.lock();
+    }
     this.publishLobby();
+  }
+
+  private addBot(): void {
+    const taken = this.nicknames();
+    const nickname = BOT_NICKNAMES.find((name) => !isNicknameTaken(taken, name)) ?? BOT_NICKNAMES[0] ?? "";
+    const character = firstFreeCharacter(this.charactersExcept(BOT_ID)) ?? 0;
+    this.members.set(BOT_ID, { character, order: this.nextOrder, nickname, bot: true });
+    this.nextOrder += 1;
   }
 
   override onLeave(client: Client): void {
@@ -146,7 +169,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   }
 
   private oldestMember(): string | null {
-    const ordered = [...this.members].sort((a, b) => a[1].order - b[1].order);
+    const ordered = [...this.members].filter(([, m]) => !m.bot).sort((a, b) => a[1].order - b[1].order);
     return ordered[0]?.[0] ?? null;
   }
 
@@ -157,6 +180,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       .map(([id]) => id)
       .slice(0, BALANCE.net.maxClientsPerRoom);
     this.match = applySeriesScore(createMatchState(seed, ids), this.series);
+    this.botMemory = createBotMemory(seed);
     this.finishedFor = 0;
     this.roundRecorded = false;
     this.publishMatch();
@@ -173,6 +197,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
       if (queue !== undefined) {
         frame[player.id] = queue.next();
       }
+    }
+    if (this.botDifficulty !== null && this.members.has(BOT_ID)) {
+      const decision = decideBot(this.match, BOT_ID, this.botDifficulty, this.botMemory, TICK_SECONDS);
+      this.botMemory = decision.memory;
+      frame[BOT_ID] = decision.input;
     }
     this.match = step(this.match, frame, TICK_SECONDS);
 
@@ -201,7 +230,7 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
   }
 
   private nextRound(): void {
-    const enoughPlayers = this.clients.length >= BALANCE.net.minPlayersToStart;
+    const enoughPlayers = this.members.size >= BALANCE.net.minPlayersToStart;
     if (!this.series.finished && enoughPlayers) {
       this.startRound();
       return;

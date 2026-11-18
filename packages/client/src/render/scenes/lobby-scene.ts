@@ -25,6 +25,7 @@ export class LobbyScene extends Phaser.Scene {
   create(): void {
     this.panel = new LobbyPanel({
       onCreate: (nickname) => this.connect(createRoom(nickname)),
+      onCreateBot: (nickname, difficulty) => this.connect(createRoom(nickname, difficulty)),
       onJoin: (raw, nickname) => {
         const code = parseRoomCode(raw);
         if (code === null) {

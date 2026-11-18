@@ -1,5 +1,5 @@
 /** Aceita apenas mensagens com o formato exato de uma entrada numerada; o resto vira null. */
-import { parseNickname, type AxisIntent, type InputCommand, type MoveAxis, type SequencedInput } from "@pixelboom/shared";
+import { isBotDifficulty, parseNickname, type AxisIntent, type BotDifficulty, type InputCommand, type MoveAxis, type SequencedInput } from "@pixelboom/shared";
 
 const ALLOWED_KEYS = new Set(["seq", "moveX", "moveY", "prefer", "bomb"]);
 
@@ -67,4 +67,13 @@ export function parseJoinNickname(options: unknown): string | null {
     return null;
   }
   return parseNickname((options as Record<string, unknown>)["nickname"]);
+}
+
+/** Opcao de criacao da sala contra bot: `{ bot: "normal" | "hard" }`. */
+export function parseBotDifficulty(options: unknown): BotDifficulty | null {
+  if (typeof options !== "object" || options === null || Array.isArray(options)) {
+    return null;
+  }
+  const bot = (options as Record<string, unknown>)["bot"];
+  return isBotDifficulty(bot) ? bot : null;
 }

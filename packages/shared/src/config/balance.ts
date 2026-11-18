@@ -64,6 +64,40 @@ export const BALANCE = {
     maxQueuedInputs: 6,
   },
 
+  /** Bot. Tempos em segundos; chances de 0 a 1. */
+  ai: {
+    /** Folga entre a chegada prevista numa celula e a chama, nos dois sentidos. */
+    flameMargin: 0.2,
+    /** Um alvo novo so substitui o atual se valer este tanto a mais. */
+    targetHysteresis: 1.5,
+    /** Tempo minimo com o mesmo alvo enquanto ele continuar seguro. */
+    targetHoldTime: 0.6,
+    /** Pesos da escolha de alvo; travelCost e descontado por segundo de caminho. */
+    powerUpValue: 8,
+    crateValue: 3,
+    travelCost: 1,
+    /** Abaixo desta distancia, chegar mais perto nao vale mais nada. */
+    enemyComfortCells: 2,
+    difficulty: {
+      normal: {
+        /** Bomba inimiga mais nova que isto ainda nao foi notada. */
+        reactionTime: 0.6,
+        /** Chance por segundo de soltar bomba quando ela prende o adversario. */
+        attackChance: 0.12,
+        /** Chance por segundo de soltar bomba com o adversario so na linha da explosao. */
+        pokeChance: 0.04,
+        /** Desconto por celula de distancia ate o adversario mais proximo. */
+        enemyPull: 0.2,
+      },
+      hard: {
+        reactionTime: 0.12,
+        attackChance: 0.9,
+        pokeChance: 0.8,
+        enemyPull: 0.5,
+      },
+    },
+  },
+
   /** Formato da partida. */
   match: {
     roundsToWin: 3,

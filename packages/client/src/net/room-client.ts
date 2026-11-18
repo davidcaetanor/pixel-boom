@@ -4,6 +4,7 @@
  * ativa e mantida entre rodadas.
  */
 import { Client, type Room } from "@colyseus/sdk";
+import type { BotDifficulty } from "@pixelboom/shared";
 
 const DEV_SERVER_PORT = 2567;
 const ROOM_NAME = "match";
@@ -34,8 +35,9 @@ async function withFirstState(joining: Promise<Room>): Promise<Room> {
   return room;
 }
 
-export function createRoom(nickname: string): Promise<Room> {
-  return withFirstState(new Client(serverUrl()).create(ROOM_NAME, { nickname }));
+export function createRoom(nickname: string, bot?: BotDifficulty): Promise<Room> {
+  const options = bot === undefined ? { nickname } : { nickname, bot };
+  return withFirstState(new Client(serverUrl()).create(ROOM_NAME, options));
 }
 
 export function joinRoom(code: string, nickname: string): Promise<Room> {

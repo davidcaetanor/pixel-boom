@@ -1,13 +1,21 @@
 /** Menu de entrada sobreposto ao canvas. Nao conhece rede nem Phaser. */
-import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, ROOM_CODE_LENGTH, parseNickname } from "@pixelboom/shared";
+import {
+  BotDifficulty,
+  NICKNAME_MAX_LENGTH,
+  NICKNAME_MIN_LENGTH,
+  ROOM_CODE_LENGTH,
+  parseNickname,
+} from "@pixelboom/shared";
+import { DIFFICULTY_LABEL } from "./labels.js";
 import { moveFocus } from "./keyboard-nav.js";
 
 export interface LobbyActions {
   onCreate(nickname: string): void;
   onJoin(code: string, nickname: string): void;
+  onCreateBot(nickname: string, difficulty: BotDifficulty): void;
 }
 
-type Screen = "inicio" | "online" | "ajuda";
+type Screen = "inicio" | "bot" | "online" | "ajuda";
 
 const NICKNAME_STORAGE_KEY = "pixelboom.apelido";
 const NICKNAME_ERROR = `Apelido: ${NICKNAME_MIN_LENGTH} a ${NICKNAME_MAX_LENGTH} letras ou numeros`;
@@ -63,6 +71,7 @@ export class LobbyPanel {
   private current: Screen = "inicio";
   private pendingCode: string | null = null;
   private readonly playButton: HTMLButtonElement;
+  private readonly botButton: HTMLButtonElement;
 
   constructor(
     private readonly actions: LobbyActions,
@@ -95,16 +104,18 @@ export class LobbyPanel {
     this.error.className = "lobby-error";
 
     this.playButton = button("Jogar online", () => this.play());
+    this.botButton = button("Jogar contra bot", () => this.confirmNickname() !== null && this.show("bot"));
 
     this.screens = {
       inicio: this.buildInicio(),
+      bot: this.buildBot(),
       online: this.buildOnline(),
       ajuda: this.buildAjuda(),
     };
 
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(this.screens.inicio, this.screens.online, this.screens.ajuda, this.error);
+    box.append(this.screens.inicio, this.screens.bot, this.screens.online, this.screens.ajuda, this.error);
     this.root.append(box);
     this.root.addEventListener("keydown", (event) => this.onKey(event));
     host.append(this.root);
@@ -118,6 +129,7 @@ export class LobbyPanel {
   awaitNickname(code: string): void {
     this.pendingCode = code;
     this.playButton.textContent = "Entrar na sala";
+    this.botButton.hidden = true;
     this.show("inicio");
     this.error.textContent = `Escolha um apelido para entrar na sala ${code}`;
     this.error.classList.add("is-info");
@@ -161,7 +173,32 @@ export class LobbyPanel {
       title,
       nickname,
       this.playButton,
+      this.botButton,
       button("Como jogar", () => this.show("ajuda")),
+    );
+    return screen;
+  }
+
+  private buildBot(): HTMLElement {
+    const screen = document.createElement("div");
+    screen.className = "lobby-tela";
+
+    const title = document.createElement("h2");
+    title.textContent = "Dificuldade";
+
+    const choices = [BotDifficulty.Normal, BotDifficulty.Hard].map((difficulty) =>
+      button(DIFFICULTY_LABEL[difficulty], () => {
+        const nickname = this.confirmNickname();
+        if (nickname !== null) {
+          this.actions.onCreateBot(nickname, difficulty);
+        }
+      }),
+    );
+    screen.append(
+      title,
+      ...choices,
+      hint("Dificil reage mais rapido e ataca mais"),
+      button("Voltar", () => this.show("inicio")),
     );
     return screen;
   }

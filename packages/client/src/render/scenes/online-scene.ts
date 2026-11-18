@@ -216,6 +216,7 @@ export class OnlineScene extends Phaser.Scene {
       code: this.room.roomId,
       localId: this.room.sessionId,
       hostId: lobby.hostId,
+      botDifficulty: lobby.botDifficulty,
       members: lobby.members,
     });
   }
