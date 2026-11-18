@@ -72,13 +72,26 @@ function zoomToque(): number {
   return Math.max(1, Math.round((DIRECIONAL_ALVO_CSS * d) / DIRECIONAL_ARTE)) / d;
 }
 
+/** Teclado virtual aberto: so ele encolhe a janela com um campo de texto em foco. */
+function digitando(): boolean {
+  const el = document.activeElement;
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+}
+
 /**
  * Publica `--ui-zoom`, `--touch-zoom` e a largura livre ao lado da arena
  * (`--arena-margem`), e avisa o zoom do canvas a cada mudanca de janela ou de
- * escala do sistema.
+ * escala do sistema. Enquanto o teclado virtual esta aberto a escala fica
+ * como estava: refazer a conta com a altura que sobra encolheria o painel
+ * no meio da digitacao.
  */
 export function acompanhaEscala(aoMudar: (zoom: number) => void): void {
+  let altura = window.innerHeight;
   const aplica = (): void => {
+    if (digitando() && window.innerHeight < altura) {
+      return;
+    }
+    altura = window.innerHeight;
     const zoom = zoomCss();
     const raiz = document.documentElement.style;
     raiz.setProperty("--ui-zoom", String(zoomUi()));
@@ -87,5 +100,6 @@ export function acompanhaEscala(aoMudar: (zoom: number) => void): void {
     aoMudar(zoom);
   };
   window.addEventListener("resize", aplica);
+  document.addEventListener("focusout", () => setTimeout(aplica));
   aplica();
 }
