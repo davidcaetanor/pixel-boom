@@ -15,6 +15,7 @@ import {
   type FixedLoopState,
   type MatchState,
 } from "@pixelboom/shared";
+import { MatchSounds } from "../../audio/match-sounds.js";
 import { KeyboardSource } from "../../input/keyboard-source.js";
 import { comemora, roundResult } from "../hud/messages.js";
 import { TimerHud } from "../hud/timer.js";
@@ -43,6 +44,7 @@ export class MatchScene extends Phaser.Scene {
   private playerView!: PlayerView;
   private powerUpView!: PowerUpView;
   private hud!: TimerHud;
+  private sounds!: MatchSounds;
 
   constructor() {
     super({ key: "match" });
@@ -63,6 +65,7 @@ export class MatchScene extends Phaser.Scene {
     this.explosionView = new ExplosionView(this);
     this.playerView = new PlayerView(this, 0);
     this.hud = new TimerHud(this);
+    this.sounds = new MatchSounds(this, LOCAL_PLAYER_ID);
 
     this.input.keyboard?.on("keydown-ENTER", () => {
       if (this.state.phase === MatchPhase.Finished) {
@@ -84,6 +87,7 @@ export class MatchScene extends Phaser.Scene {
       );
     }
 
+    this.sounds.update(this.state);
     this.arenaView.render(this.state.grid, this.state.phase);
     this.powerUpView.render(this.state.powerUps);
     this.bombView.render(this.state.bombs);
