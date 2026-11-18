@@ -1,7 +1,14 @@
 /** Conteudo de "Como jogar", usado no menu inicial e no menu de pausa. */
-const CONTROLES: readonly (readonly [string, string])[] = [
+import { isTouchDevice } from "../app/touch-screen.js";
+
+const CONTROLES_TECLADO: readonly (readonly [string, string])[] = [
   ["Setas ou WASD", "andar"],
   ["Espaco", "soltar bomba"],
+];
+
+const CONTROLES_TOQUE: readonly (readonly [string, string])[] = [
+  ["Direcional", "andar"],
+  ["Bomba", "soltar bomba"],
 ];
 
 const MELHORIAS: readonly (readonly [string, string])[] = [
@@ -16,7 +23,7 @@ export function helpBody(): HTMLElement[] {
 
   const list = document.createElement("dl");
   list.className = "lobby-ajuda";
-  for (const [keys, action] of CONTROLES) {
+  for (const [keys, action] of isTouchDevice() ? CONTROLES_TOQUE : CONTROLES_TECLADO) {
     const term = document.createElement("dt");
     term.textContent = keys;
     const desc = document.createElement("dd");

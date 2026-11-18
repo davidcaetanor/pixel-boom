@@ -23,7 +23,7 @@ import {
   type MatchState,
 } from "@pixelboom/shared";
 import { MatchSounds } from "../../audio/match-sounds.js";
-import { KeyboardSource } from "../../input/keyboard-source.js";
+import { PlayerInput } from "../../input/player-input.js";
 import { comemora, roundResult } from "../hud/messages.js";
 import { TimerHud } from "../hud/timer.js";
 import { ArenaView } from "../views/arena-view.js";
@@ -50,7 +50,7 @@ export class MatchScene extends Phaser.Scene {
   private state!: MatchState;
   private previous!: MatchState;
   private loop!: FixedLoopState;
-  private keyboard!: KeyboardSource;
+  private controls!: PlayerInput;
   private arenaView!: ArenaView;
   private bombView!: BombView;
   private explosionView!: ExplosionView;
@@ -73,7 +73,8 @@ export class MatchScene extends Phaser.Scene {
     this.state = createMatchState(semente, [LOCAL_PLAYER_ID, ...botIds]);
     this.previous = this.state;
     this.loop = createFixedLoop();
-    this.keyboard = new KeyboardSource();
+    this.controls = new PlayerInput();
+    this.controls.setActive(true);
 
     this.arenaView = new ArenaView(this, this.state.grid, this.state.players);
     this.bombView = new BombView(this);
@@ -83,13 +84,15 @@ export class MatchScene extends Phaser.Scene {
     this.hud = new TimerHud(this);
     this.sounds = new MatchSounds(this, LOCAL_PLAYER_ID);
 
-    this.input.keyboard?.on("keydown-ENTER", () => {
+    const novaRodada = (): void => {
       if (this.state.phase === MatchPhase.Finished) {
         this.scene.restart();
       }
-    });
+    };
+    this.input.keyboard?.on("keydown-ENTER", novaRodada);
+    this.input.on("pointerup", novaRodada);
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.dispose());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.controls.dispose());
   }
 
   override update(_time: number, deltaMs: number): void {
@@ -118,7 +121,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private inputs(): Record<string, InputCommand> {
-    const inputs: Record<string, InputCommand> = { [LOCAL_PLAYER_ID]: this.keyboard.read() };
+    const inputs: Record<string, InputCommand> = { [LOCAL_PLAYER_ID]: this.controls.read() };
     for (const [id, memory] of this.bots) {
       const decision = decideBot(this.state, id, BotDifficulty.Normal, memory, TICK_SECONDS);
       this.bots.set(id, decision.memory);

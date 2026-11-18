@@ -21,7 +21,7 @@ import type { Room } from "@colyseus/sdk";
 import { MatchSounds } from "../../audio/match-sounds.js";
 import { SFX, playSfx } from "../../audio/sfx.js";
 import { announceBack } from "../../audio/ui-sounds.js";
-import { KeyboardSource } from "../../input/keyboard-source.js";
+import { PlayerInput } from "../../input/player-input.js";
 import { SnapshotBuffer } from "../../net/interpolation.js";
 import { predictionFor, type LocalPrediction } from "../../net/prediction.js";
 import { activeRoom, leaveRoom } from "../../net/room-client.js";
@@ -62,7 +62,7 @@ function isMovingPhase(state: MatchState): boolean {
 export class OnlineScene extends Phaser.Scene {
   private room!: Room;
   private prediction!: LocalPrediction;
-  private keyboard!: KeyboardSource;
+  private controls!: PlayerInput;
   private timer!: TimerHud;
   private scoreboard!: Scoreboard;
   private attributes!: AttributesHud;
@@ -103,7 +103,7 @@ export class OnlineScene extends Phaser.Scene {
     this.roomSize = 0;
     this.loop.accumulator = 0;
 
-    this.keyboard = new KeyboardSource();
+    this.controls = new PlayerInput(() => this.togglePause());
     this.timer = new TimerHud(this);
     this.scoreboard = new Scoreboard(this);
     this.attributes = new AttributesHud(this);
@@ -142,7 +142,7 @@ export class OnlineScene extends Phaser.Scene {
       window.removeEventListener("keydown", onEscape);
       this.pause?.dispose();
       this.pause = null;
-      this.keyboard.dispose();
+      this.controls.dispose();
       this.closePanel();
     });
   }
@@ -189,6 +189,7 @@ export class OnlineScene extends Phaser.Scene {
       return;
     }
     const snapshot = this.latest;
+    this.controls.setActive(snapshot !== null && this.pause?.isOpen !== true);
     if (snapshot === null) {
       if (this.waitingLobby !== null) {
         this.renderRoom(this.waitingLobby);
@@ -199,7 +200,7 @@ export class OnlineScene extends Phaser.Scene {
 
     const ticks = advance(this.loop, deltaMs / MS_PER_SECOND);
     for (let i = 0; i < ticks; i += 1) {
-      this.send(this.pause?.isOpen === true ? IDLE_INPUT : this.keyboard.read());
+      this.send(this.pause?.isOpen === true ? IDLE_INPUT : this.controls.read());
     }
     this.draw(snapshot, time, deltaMs / MS_PER_SECOND);
   }

@@ -6,6 +6,7 @@ import {
   ROOM_CODE_LENGTH,
   parseNickname,
 } from "@pixelboom/shared";
+import { needsHomeScreen } from "../app/touch-screen.js";
 import { DIFFICULTY_LABEL } from "./labels.js";
 import { announceBack, markBack } from "../audio/ui-sounds.js";
 import { helpBody } from "./help.js";
@@ -17,7 +18,13 @@ export interface LobbyActions {
   onCreateBot(nickname: string, difficulty: BotDifficulty): void;
 }
 
-type Screen = "inicio" | "bot" | "online" | "ajuda";
+type Screen = "inicio" | "bot" | "online" | "ajuda" | "telaCheia";
+
+/** Passos do Safari para abrir o jogo pela Tela de Inicio, com o icone de cada botao. */
+const PASSOS_TELA_INICIO: readonly (readonly [string, string])[] = [
+  ["/ui-compartilhar.png", "Toque em Compartilhar"],
+  ["/ui-adicionar.png", "Adicionar a Tela de Inicio"],
+];
 
 const NICKNAME_STORAGE_KEY = "pixelboom.apelido";
 const NICKNAME_ERROR = `Apelido: ${NICKNAME_MIN_LENGTH} a ${NICKNAME_MAX_LENGTH} letras ou numeros`;
@@ -102,11 +109,12 @@ export class LobbyPanel {
       bot: this.buildBot(),
       online: this.buildOnline(),
       ajuda: this.buildAjuda(),
+      telaCheia: this.buildTelaCheia(),
     };
 
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(this.screens.inicio, this.screens.bot, this.screens.online, this.screens.ajuda, this.error);
+    box.append(...Object.values(this.screens), this.error);
     this.root.append(box);
     this.root.addEventListener("keydown", (event) => this.onKey(event));
     host.append(this.root);
@@ -167,6 +175,37 @@ export class LobbyPanel {
       this.botButton,
       button("Como jogar", () => this.show("ajuda")),
     );
+    if (needsHomeScreen()) {
+      const fullscreen = button("", () => this.show("telaCheia"));
+      fullscreen.className = "lobby-tela-cheia";
+      fullscreen.title = "Tela cheia";
+      fullscreen.setAttribute("aria-label", "Tela cheia");
+      screen.append(fullscreen);
+    }
+    return screen;
+  }
+
+  private buildTelaCheia(): HTMLElement {
+    const screen = document.createElement("div");
+    screen.className = "lobby-tela";
+
+    const title = document.createElement("h2");
+    title.textContent = "Tela cheia";
+
+    const steps = document.createElement("dl");
+    steps.className = "lobby-ajuda lobby-passos";
+    for (const [src, text] of PASSOS_TELA_INICIO) {
+      const term = document.createElement("dt");
+      const icon = document.createElement("img");
+      icon.src = src;
+      icon.alt = "";
+      term.append(icon);
+      const desc = document.createElement("dd");
+      desc.textContent = text;
+      steps.append(term, desc);
+    }
+
+    screen.append(title, steps, markBack(button("Voltar", () => this.show("inicio"))));
     return screen;
   }
 
