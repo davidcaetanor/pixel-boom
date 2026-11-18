@@ -5,6 +5,9 @@
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ";
 export const ROOM_CODE_LENGTH = 5;
 
+/** Recusa de criacao de sala quando o servidor atingiu o teto de salas vivas. */
+export const SERVER_FULL_CODE = 503;
+
 const ROOM_CODE_PATTERN = new RegExp(`^[${ROOM_CODE_ALPHABET}]{${ROOM_CODE_LENGTH}}$`);
 
 /** Normaliza para maiusculas e valida o formato. */
