@@ -34,14 +34,19 @@ async function withFirstState(joining: Promise<Room>): Promise<Room> {
   return room;
 }
 
-export function createRoom(): Promise<Room> {
-  return withFirstState(new Client(serverUrl()).create(ROOM_NAME));
+export function createRoom(nickname: string): Promise<Room> {
+  return withFirstState(new Client(serverUrl()).create(ROOM_NAME, { nickname }));
 }
 
-export function joinRoom(code: string): Promise<Room> {
-  return withFirstState(new Client(serverUrl()).joinById(code));
+export function joinRoom(code: string, nickname: string): Promise<Room> {
+  return withFirstState(new Client(serverUrl()).joinById(code, { nickname }));
 }
 
 export function activeRoom(): Room | null {
   return active;
+}
+
+export function leaveRoom(): void {
+  void active?.leave();
+  active = null;
 }

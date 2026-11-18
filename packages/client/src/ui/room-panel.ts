@@ -1,14 +1,13 @@
-/**
- * Sala de espera sobreposta ao canvas: codigo e convite, escolha de personagem
- * e o botao de iniciar, ativo so para o anfitriao. Nao conhece rede nem Phaser.
- */
-import { BALANCE, CHARACTER_COUNT } from "@pixelboom/shared";
+/** Sala de espera sobreposta ao canvas. Nao conhece rede nem Phaser. */
+import { BALANCE, CHARACTER_COUNT, displayName, shortName } from "@pixelboom/shared";
 import { FOLHA_PERSONAGEM, caminhoDaFolha, chaveDoPersonagem, ELENCO } from "../render/atlas/atlas-registry.js";
 import { corCss, corDoSlot } from "../render/palette.js";
+import { moveFocus } from "./keyboard-nav.js";
 
 export interface RoomPanelActions {
   onPick(character: number): void;
   onStart(): void;
+  onLeave(): void;
 }
 
 export interface RoomPanelView {
@@ -16,12 +15,14 @@ export interface RoomPanelView {
   readonly localId: string;
   readonly hostId: string;
   /** Em ordem de entrada; a posicao define a cor do slot. */
-  readonly members: readonly { readonly id: string; readonly character: number }[];
+  readonly members: readonly { readonly id: string; readonly character: number; readonly nickname: string | null }[];
 }
 
 /** Miniatura em escala de arte; o zoom do painel amplia junto com o resto. */
 const PREVIEW_SCALE = 1;
 const COPIED_FEEDBACK_MS = 1500;
+/** Igual ao grid-template-columns de .roster. */
+const ROSTER_COLUMNS = 4;
 /** Espessura do contorno na cor do slot que marca o dono do personagem. */
 const OWNER_OUTLINE = 1;
 const OWNER_OUTLINE_MINE = 2;
@@ -32,7 +33,8 @@ export class RoomPanel {
   private readonly start: HTMLButtonElement;
   private readonly copy: HTMLButtonElement;
   private readonly cards: HTMLButtonElement[] = [];
-  private inviteUrl = "";
+  private code = "";
+  private focused = false;
 
   constructor(actions: RoomPanelActions, host: HTMLElement = document.body) {
     this.root = document.createElement("div");
@@ -43,7 +45,7 @@ export class RoomPanel {
 
     this.copy = document.createElement("button");
     this.copy.type = "button";
-    this.copy.addEventListener("click", () => this.copyInvite());
+    this.copy.addEventListener("click", () => this.copyCode());
 
     const grid = document.createElement("div");
     grid.className = "roster";
@@ -81,20 +83,33 @@ export class RoomPanel {
     this.start.className = "room-start";
     this.start.addEventListener("click", () => actions.onStart());
 
+    const leave = document.createElement("button");
+    leave.type = "button";
+    leave.textContent = "Voltar ao menu";
+    leave.addEventListener("click", () => actions.onLeave());
+
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(title, this.copy, grid, this.status, this.start);
+    box.append(title, this.copy, grid, this.status, this.start, leave);
     this.root.append(box);
+    this.root.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        actions.onLeave();
+        return;
+      }
+      moveFocus(event, [this.copy, ...this.cards, this.start, leave], { items: this.cards, columns: ROSTER_COLUMNS });
+    });
     host.append(this.root);
   }
 
   render(view: RoomPanelView): void {
-    this.inviteUrl = `${window.location.origin}${window.location.pathname}?sala=${view.code}`;
+    this.code = view.code;
     if (!this.copy.dataset["copied"]) {
-      this.copy.textContent = `Codigo ${view.code}  |  copiar convite`;
+      this.copy.textContent = `Codigo ${view.code}  |  copiar codigo`;
     }
 
-    const owners = new Map(view.members.map((m, slot) => [m.character, { id: m.id, slot }]));
+    const owners = new Map(view.members.map((m, slot) => [m.character, { id: m.id, slot, nickname: m.nickname }]));
     this.cards.forEach((card, character) => {
       const owner = owners.get(character);
       const mine = owner?.id === view.localId;
@@ -108,9 +123,16 @@ export class RoomPanel {
       }
       const label = card.querySelector(".roster-label");
       if (label !== null) {
-        label.textContent = owner === undefined ? "livre" : mine ? "voce" : `J${owner.slot + 1}`;
+        const name = owner === undefined ? "livre" : displayName(owner.nickname, owner.slot);
+        label.textContent = shortName(name);
+        card.title = owner === undefined ? (ELENCO[character] ?? "") : name;
       }
     });
+
+    if (!this.focused) {
+      this.focused = true;
+      this.cards.find((card) => card.classList.contains("is-mine"))?.focus();
+    }
 
     const isHost = view.localId === view.hostId;
     const count = view.members.length;
@@ -129,10 +151,10 @@ export class RoomPanel {
     this.root.remove();
   }
 
-  private copyInvite(): void {
-    void navigator.clipboard?.writeText(this.inviteUrl).then(() => {
+  private copyCode(): void {
+    void navigator.clipboard?.writeText(this.code).then(() => {
       this.copy.dataset["copied"] = "1";
-      this.copy.textContent = "Convite copiado";
+      this.copy.textContent = "Codigo copiado";
       window.setTimeout(() => delete this.copy.dataset["copied"], COPIED_FEEDBACK_MS);
     });
   }

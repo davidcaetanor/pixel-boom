@@ -1,5 +1,5 @@
 /** Aceita apenas mensagens com o formato exato de uma entrada numerada; o resto vira null. */
-import type { AxisIntent, InputCommand, MoveAxis, SequencedInput } from "@pixelboom/shared";
+import { parseNickname, type AxisIntent, type InputCommand, type MoveAxis, type SequencedInput } from "@pixelboom/shared";
 
 const ALLOWED_KEYS = new Set(["seq", "moveX", "moveY", "prefer", "bomb"]);
 
@@ -59,4 +59,12 @@ export function parseCharacterPick(raw: unknown): number | null {
     return null;
   }
   return index;
+}
+
+/** Opcoes de entrada na sala: `{ nickname }`. */
+export function parseJoinNickname(options: unknown): string | null {
+  if (typeof options !== "object" || options === null || Array.isArray(options)) {
+    return null;
+  }
+  return parseNickname((options as Record<string, unknown>)["nickname"]);
 }

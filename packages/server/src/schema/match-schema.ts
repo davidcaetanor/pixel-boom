@@ -40,6 +40,7 @@ export class MemberSchema extends Schema {
   @type("uint8") character = 0;
   /** Ordem de entrada na sala; define o proximo anfitriao. */
   @type("uint16") order = 0;
+  @type("string") nickname = "";
 }
 
 /** Fase de transporte: sala aguardando jogadores. */

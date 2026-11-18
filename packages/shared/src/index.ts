@@ -2,6 +2,7 @@
 export * from "./config/arena.js";
 export * from "./config/arena-layouts.js";
 export * from "./config/balance.js";
+export * from "./config/nickname.js";
 export * from "./config/room-code.js";
 export * from "./config/sudden-death-order.js";
 export * from "./commands/input-command.js";

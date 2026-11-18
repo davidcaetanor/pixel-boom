@@ -20,6 +20,7 @@ PECAS = {
     "ui-botao-hover": "kit/pixelboom_ui_kit/elements/button/hover.png",
     "ui-botao-pressionado": "kit/pixelboom_ui_kit/elements/button/pressed.png",
     "ui-botao-desabilitado": "kit/pixelboom_ui_kit/elements/button/disabled.png",
+    "ui-botao-foco": "kit/pixelboom_ui_kit/elements/button/focused.png",
     "ui-coroa": "host_crown/host_crown.png",
 }
 # Diferenca de luminancia abaixo da qual um orfao e ruido, nao detalhe.

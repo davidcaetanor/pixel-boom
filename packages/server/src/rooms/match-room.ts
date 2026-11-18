@@ -4,7 +4,7 @@
  * curto como id e uma espera em que cada jogador escolhe personagem. O
  * anfitriao inicia a serie; ao fim dela todos voltam para a espera.
  */
-import { Room, type Client } from "@colyseus/core";
+import { Room, ServerError, type Client } from "@colyseus/core";
 import {
   BALANCE,
   InputQueue,
@@ -16,7 +16,9 @@ import {
   canPickCharacter,
   createFixedLoop,
   createMatchState,
+  NICKNAME_TAKEN_CODE,
   firstFreeCharacter,
+  isNicknameTaken,
   recordRound,
   step,
   type FixedLoopState,
@@ -26,12 +28,13 @@ import {
 } from "@pixelboom/shared";
 import { writeLobby, writeMatch, writeWaiting, type LobbyMember } from "../schema/mappers.js";
 import { MatchSchema } from "../schema/match-schema.js";
-import { parseCharacterPick, parseInput } from "../validation/input-validator.js";
+import { parseCharacterPick, parseInput, parseJoinNickname } from "../validation/input-validator.js";
 import { generateRoomCode } from "./room-code.js";
 
 const MS_PER_SECOND = 1000;
 /** Faixa de sementes de 31 bits, a mesma que o RNG de shared aceita. */
 const SEED_RANGE = 2 ** 31;
+const BAD_REQUEST = 400;
 
 export class MatchRoom extends Room<{ state: MatchSchema }> {
   override maxClients = BALANCE.net.maxClientsPerRoom;
@@ -90,10 +93,26 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     writeWaiting(this.state);
   }
 
-  override onJoin(client: Client): void {
+  override onAuth(_client: Client, options: unknown): true {
+    const nickname = parseJoinNickname(options);
+    if (nickname === null) {
+      throw new ServerError(BAD_REQUEST, "apelido obrigatorio");
+    }
+    if (isNicknameTaken(this.nicknames(), nickname)) {
+      throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
+    }
+    return true;
+  }
+
+  override onJoin(client: Client, options: unknown): void {
+    const nickname = parseJoinNickname(options) ?? "";
+    // Entradas simultaneas passam juntas pelo onAuth.
+    if (isNicknameTaken(this.nicknames(), nickname)) {
+      throw new ServerError(NICKNAME_TAKEN_CODE, "apelido em uso nesta sala");
+    }
     this.queues.set(client.sessionId, new InputQueue());
     const character = firstFreeCharacter(this.charactersExcept(client.sessionId)) ?? 0;
-    this.members.set(client.sessionId, { character, order: this.nextOrder });
+    this.members.set(client.sessionId, { character, order: this.nextOrder, nickname });
     this.nextOrder += 1;
     if (this.hostId === "") {
       this.hostId = client.sessionId;
@@ -116,6 +135,10 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
         ),
       };
     }
+  }
+
+  private nicknames(): string[] {
+    return [...this.members.values()].map((m) => m.nickname);
   }
 
   private charactersExcept(id: string): number[] {

@@ -1,14 +1,15 @@
 /**
  * Placar na faixa inferior da arena: um quadro por jogador, com a cor do slot,
- * o nome e uma estrela por vitoria necessaria na serie (dourada quando ganha).
+ * o nome em forma curta e uma estrela por vitoria necessaria na serie (dourada
+ * quando ganha).
  * Eliminados ficam esmaecidos. Posicoes em pixels inteiros.
  */
 import type Phaser from "phaser";
-import { ARENA_ROWS, BALANCE, LOGICAL_WIDTH, TILE_SIZE, type Player } from "@pixelboom/shared";
+import { ARENA_ROWS, BALANCE, LOGICAL_WIDTH, TILE_SIZE, shortName, type Player } from "@pixelboom/shared";
 import { TEXTURA } from "../atlas/atlas-registry.js";
 import { corDoSlot } from "../palette.js";
 import { textoHud } from "./pixel-text.js";
-import { playerName } from "./messages.js";
+import { playerName, type Nicknames } from "./messages.js";
 
 const HUD_DEPTH = 100;
 const SLOTS = BALANCE.net.maxClientsPerRoom;
@@ -46,7 +47,7 @@ export class Scoreboard {
     }
   }
 
-  render(players: readonly Player[], localId: string): void {
+  render(players: readonly Player[], names: Nicknames): void {
     const bySlot = new Map(players.map((p) => [p.slot, p]));
     this.entries.forEach((entry, slot) => {
       const player = bySlot.get(slot);
@@ -59,8 +60,7 @@ export class Scoreboard {
       if (player === undefined) {
         return;
       }
-      // O proprio nome sai na cor do slot; asterisco ao lado das estrelas confundia.
-      entry.text.setText(playerName(player)).setTint(player.id === localId ? corDoSlot(slot) : COR_NOME);
+      entry.text.setText(shortName(playerName(player, names))).setTint(COR_NOME);
       const alpha = player.alive ? 1 : ELIMINATED_ALPHA;
       entry.swatch.setAlpha(alpha);
       entry.text.setAlpha(alpha);
