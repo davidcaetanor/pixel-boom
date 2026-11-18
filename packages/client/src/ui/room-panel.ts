@@ -81,9 +81,6 @@ export class RoomPanel {
     this.gear.title = "Configuracoes da sala";
     this.gear.setAttribute("aria-label", this.gear.title);
     this.gear.addEventListener("click", () => actions.onSettings());
-    const header = document.createElement("div");
-    header.className = "room-header";
-    header.append(document.createElement("span"), this.title, this.gear);
     this.summary = document.createElement("p");
     this.summary.className = "room-summary";
 
@@ -163,7 +160,7 @@ export class RoomPanel {
 
     const box = document.createElement("div");
     box.className = "ui-panel";
-    box.append(header, this.copy, grid, this.summary, this.status, this.start, leave);
+    box.append(this.gear, this.title, this.copy, grid, this.summary, this.status, this.start, leave);
     this.root.append(box);
     this.root.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {

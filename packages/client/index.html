@@ -111,33 +111,40 @@
       .lobby .room-main.is-danger {
         color: #7a1c18;
       }
-      /* Engrenagem e titulo na largura do botao do codigo: a borda direita das duas pecas coincide. */
-      .room-header {
-        display: grid;
-        grid-template-columns: 28px 1fr 28px;
-        align-items: center;
-        width: 196px;
+      .room .ui-panel {
+        position: relative;
       }
-      .room-header h1 {
+      .room h1 {
         line-height: normal;
-        text-align: center;
       }
+      /* No canto interno do painel, fora do fluxo: a posicao nao depende do titulo nem da sala. */
       .lobby .room-gear {
+        position: absolute;
+        top: 0;
+        right: 0;
         width: 28px;
         height: 28px;
         padding: 0;
-        border: none;
-        border-image: none;
-        background: url(/ui-engrenagem.png) no-repeat;
+        border: 10px solid transparent;
+        border-image: url(/ui-slot.png) 10 fill / 10px stretch;
+        background: url(/ui-engrenagem.png) center no-repeat;
       }
       .lobby .room-gear:hover,
       .lobby .room-gear:focus-visible {
-        border-image: none;
+        border-image-source: url(/ui-slot-hover.png);
         background-image: url(/ui-engrenagem-foco.png);
       }
-      .lobby .room-gear[hidden] {
-        display: block;
-        visibility: hidden;
+      .lobby .room-gear:active {
+        border-image-source: url(/ui-slot-selecionado.png);
+      }
+      .lobby.room-settings h2,
+      .lobby.pause h2 {
+        font-size: 20px;
+        line-height: normal;
+      }
+      .lobby.room-settings .ui-panel,
+      .lobby.pause .ui-panel {
+        gap: 12px;
       }
       .room-summary,
       .pause-summary {
@@ -177,14 +184,15 @@
         text-align: center;
       }
       /* Largura fixa: trocar de tela no menu nao redimensiona o painel. */
-      .lobby.pause .ui-panel {
+      .lobby.pause .ui-panel,
+      .lobby.room-settings .ui-panel {
         width: 220px;
       }
       .pause-screen {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
       }
       .pause-screen[hidden] {
         display: none;
