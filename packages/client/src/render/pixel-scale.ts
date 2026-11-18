@@ -3,16 +3,13 @@
  * de pixels fisicos, inclusive com o Windows em 125% ou 150%; escala fracionaria
  * desenha pixels de larguras diferentes e a arte parece borrada.
  *
- * Em aparelho de toque a arena divide a largura com os controles: cada lado
- * reserva a faixa do direcional, que pode avancar sobre a sebe da borda mas
- * nunca sobre celula jogavel. Com densidade de 2 ou mais a arena usa a escala
- * que preenche esse espaco: num celular o pixel fracionario nao aparece, e a
- * escala inteira deixaria a arena bem menor que a tela.
+ * Em aparelho de toque a arena ocupa a tela toda que couber, em escala
+ * fracionaria: num celular a diferenca de largura entre pixels nao aparece, e
+ * a escala inteira deixaria a arena bem menor que a tela. Os controles ficam
+ * por cima, translucidos.
  *
- * Duas excecoes, ambas para nao perder o jogo: quando nem 1x cabe a arena
- * encolhe na escala que couber, em vez de ser cortada; e em aparelho de toque
- * que so alcanca 1x a arena ocupa toda a area livre, porque em 1x a celula
- * fica pequena demais para o dedo.
+ * Fora do toque, quando nem 1x cabe a arena encolhe na escala que couber, em
+ * vez de ser cortada.
  */
 import { LOGICAL_HEIGHT, LOGICAL_WIDTH, RENDER_ZOOM } from "@pixelboom/shared";
 import { isTouchDevice } from "../app/touch-screen.js";
@@ -24,57 +21,31 @@ const UI_DEITADA = { largura: 530, altura: 230 };
 /** Lado do direcional em pixels de arte e o tamanho que ele deve ter no dedo, em px CSS. */
 const DIRECIONAL_ARTE = 98;
 const DIRECIONAL_ALVO_CSS = 112;
-/** Folga entre o controle e a borda da tela ou da arena, em px CSS. */
-const FOLGA_CONTROLE_CSS = 12;
-/** Largura da sebe da borda da arena, em pixels de arte: nao e jogavel. */
-const SEBE_ARTE = 32;
-/** Densidade a partir da qual a escala fracionaria nao se percebe. */
-const DENSIDADE_FRACIONARIA = 2;
-
 function dpr(): number {
   return window.devicePixelRatio || 1;
 }
 
-function encaixe(largura: number, altura: number, reservaCss = 0): number {
+function encaixe(largura: number, altura: number): number {
   const d = dpr();
-  return Math.min(((window.innerWidth - reservaCss) * d) / largura, (window.innerHeight * d) / altura);
+  return Math.min((window.innerWidth * d) / largura, (window.innerHeight * d) / altura);
 }
 
 /** Maior multiplo inteiro que cabe na janela, limitado ao zoom de projeto. */
-function multiploQueCabe(largura: number, altura: number, reservaCss = 0): number {
+function multiploQueCabe(largura: number, altura: number): number {
   const alvo = Math.round(RENDER_ZOOM * dpr());
   if (window.innerWidth === 0 || window.innerHeight === 0) {
     return alvo;
   }
-  return Math.max(1, Math.min(Math.floor(encaixe(largura, altura, reservaCss)), alvo));
-}
-
-/** Largura CSS que os controles de toque tiram da arena, somando os dois lados. */
-function reservaDosControles(): number {
-  if (!isTouchDevice()) {
-    return 0;
-  }
-  return 2 * (DIRECIONAL_ARTE * zoomToque() + 2 * FOLGA_CONTROLE_CSS);
-}
-
-/** Zoom CSS que preenche a tela de toque com os controles sobre a sebe. */
-function zoomDeToque(reserva: number): number {
-  const largura = (window.innerWidth - reserva) / (LOGICAL_WIDTH - 2 * SEBE_ARTE);
-  return Math.min(largura, window.innerHeight / LOGICAL_HEIGHT);
+  return Math.max(1, Math.min(Math.floor(encaixe(largura, altura)), alvo));
 }
 
 /** Zoom CSS do canvas: pixels fisicos por pixel de arte, inteiro sempre que der. */
 export function zoomCss(): number {
-  const reserva = reservaDosControles();
-  if (reserva > 0 && window.innerWidth > 0 && dpr() >= DENSIDADE_FRACIONARIA) {
-    return zoomDeToque(reserva);
-  }
-  const inteiro = multiploQueCabe(LOGICAL_WIDTH, LOGICAL_HEIGHT, reserva);
-  const livre = encaixe(LOGICAL_WIDTH, LOGICAL_HEIGHT, reserva);
-  if (window.innerWidth > 0 && (livre < 1 || (inteiro === 1 && reserva > 0))) {
+  const livre = encaixe(LOGICAL_WIDTH, LOGICAL_HEIGHT);
+  if (window.innerWidth > 0 && (isTouchDevice() || livre < 1)) {
     return livre / dpr();
   }
-  return inteiro / dpr();
+  return multiploQueCabe(LOGICAL_WIDTH, LOGICAL_HEIGHT) / dpr();
 }
 
 /**

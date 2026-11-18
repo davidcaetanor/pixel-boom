@@ -449,6 +449,17 @@
         background-size: 100% 100%;
         image-rendering: pixelated;
       }
+      /*
+       * Direcional e bomba ficam sobre a arena: translucidos sempre, inclusive
+       * apertados, para nao esconder quem esta embaixo. O contorno escuro
+       * segura a forma sobre o verde.
+       */
+      .touch-pad,
+      .touch-bomba {
+        opacity: 0.35;
+        filter: drop-shadow(1px 0 0 #14121c) drop-shadow(-1px 0 0 #14121c) drop-shadow(0 1px 0 #14121c)
+          drop-shadow(0 -1px 0 #14121c);
+      }
       .touch-pad {
         position: absolute;
         left: max(calc(env(safe-area-inset-left) + 12px), calc((var(--arena-margem, 0px) - var(--pad-l)) / 2));
