@@ -37,7 +37,7 @@ export const BALANCE = {
     matchMax: 180,
     /** Pausa entre o fim de uma rodada online e o inicio da proxima. */
     roundRestartDelay: 5,
-    /** Pausa entre o fim de uma serie e o inicio da proxima. */
+    /** Pausa entre o fim de uma serie e a volta para a sala de espera. */
     seriesRestartDelay: 10,
   },
 
