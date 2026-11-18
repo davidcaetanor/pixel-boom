@@ -26,7 +26,7 @@ import {
 } from "@pixelboom/shared";
 import { writeLobby, writeMatch, writeWaiting, type LobbyMember } from "../schema/mappers.js";
 import { MatchSchema } from "../schema/match-schema.js";
-import { parseCharacterPick, parseInput } from "../validation/input-validator.js";
+import { parseCharacterPick, parseInput, parseJoinNickname } from "../validation/input-validator.js";
 import { generateRoomCode } from "./room-code.js";
 
 const MS_PER_SECOND = 1000;
@@ -90,10 +90,11 @@ export class MatchRoom extends Room<{ state: MatchSchema }> {
     writeWaiting(this.state);
   }
 
-  override onJoin(client: Client): void {
+  override onJoin(client: Client, options: unknown): void {
     this.queues.set(client.sessionId, new InputQueue());
     const character = firstFreeCharacter(this.charactersExcept(client.sessionId)) ?? 0;
-    this.members.set(client.sessionId, { character, order: this.nextOrder });
+    const nickname = parseJoinNickname(options);
+    this.members.set(client.sessionId, { character, order: this.nextOrder, nickname });
     this.nextOrder += 1;
     if (this.hostId === "") {
       this.hostId = client.sessionId;
