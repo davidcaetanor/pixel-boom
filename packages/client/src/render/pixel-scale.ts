@@ -20,7 +20,7 @@ import { isTouchDevice } from "../app/touch-screen.js";
  * do formato (a sala empilhada, ou o menu inicial quando a sala esta deitada),
  * com folga para a barra do navegador nao cortar a moldura.
  */
-const UI_EMPILHADA = { largura: 348, altura: 392 };
+const UI_EMPILHADA = { largura: 348, altura: 440 };
 const UI_DEITADA = { largura: 600, altura: 284 };
 
 /** Lado do direcional em pixels de arte e o tamanho que ele deve ter no dedo, em px CSS. */
