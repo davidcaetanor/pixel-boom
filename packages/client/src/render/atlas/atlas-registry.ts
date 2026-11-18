@@ -7,13 +7,7 @@ export const TEXTURA = {
   pisoEscuro: "piso-escuro",
   pilar: "pilar",
   caixa: "caixa",
-  arvore: "arvore-provisorio",
-  arvorePequena: "arvore-p-provisorio",
   spawn: "spawn-provisorio",
-  bomba: "bomba-provisorio",
-  chamaCentro: "chama-centro-provisorio",
-  chamaHorizontal: "chama-horizontal-provisorio",
-  chamaVertical: "chama-vertical-provisorio",
   powerupBomba: "powerup-bomba",
   powerupAlcance: "powerup-alcance",
   powerupVelocidade: "powerup-velocidade",
@@ -24,6 +18,33 @@ export const TEXTURA = {
   uiVitoria: "ui-vitoria",
   uiVitoriaVazia: "ui-vitoria-vazia",
 } as const;
+
+/**
+ * Folhas animadas de 32x32, um quadro por coluna. Bomba: parada, respirando e
+ * clarao. Chamas: nascendo, cheia, tremulando e esfriando.
+ */
+export const ANIMADAS = {
+  bomba: "bomba",
+  chamaCentro: "chama-centro",
+  chamaBracoH: "chama-braco-h",
+  chamaBracoV: "chama-braco-v",
+  chamaPontaLeste: "chama-ponta-leste",
+  chamaPontaOeste: "chama-ponta-oeste",
+  chamaPontaNorte: "chama-ponta-norte",
+  chamaPontaSul: "chama-ponta-sul",
+} as const;
+
+/**
+ * Cerca-viva da borda: dois tiles que alternam, cada um numa folha de 5 quadros
+ * (plano e beira ondulada voltada para a area jogavel).
+ */
+export const SEBE = {
+  folhas: ["sebe-a", "sebe-b"],
+  quadro: { plano: 0, baixo: 1, cima: 2, esquerda: 3, direita: 4 },
+} as const;
+
+export type NomeAnimada = (typeof ANIMADAS)[keyof typeof ANIMADAS];
+export const QUADRO_ANIMADA = 32;
 
 /** Digitos grandes 0-9 da contagem regressiva, um quadro por digito. */
 export const DIGITOS = { chave: "ui-digitos", larguraFrame: 19, alturaFrame: 32 } as const;

@@ -2,7 +2,10 @@
 import Phaser from "phaser";
 import { registraFonteHud } from "../hud/pixel-text.js";
 import {
+  ANIMADAS,
   DIGITOS,
+  QUADRO_ANIMADA,
+  SEBE,
   ELENCO,
   FOLHA_PERSONAGEM,
   TEXTURA,
@@ -19,6 +22,12 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     for (const nome of Object.values(TEXTURA)) {
       this.load.image(nome, caminhoDaTextura(nome));
+    }
+    for (const nome of Object.values(ANIMADAS)) {
+      this.load.spritesheet(nome, caminhoDaFolha(nome), { frameWidth: QUADRO_ANIMADA, frameHeight: QUADRO_ANIMADA });
+    }
+    for (const nome of SEBE.folhas) {
+      this.load.spritesheet(nome, caminhoDaFolha(nome), { frameWidth: QUADRO_ANIMADA, frameHeight: QUADRO_ANIMADA });
     }
     this.load.spritesheet(DIGITOS.chave, caminhoDaFolha(DIGITOS.chave), {
       frameWidth: DIGITOS.larguraFrame,
